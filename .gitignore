@@ -1,0 +1,11 @@
+.idea
+*.zip
+*.max
+ISS\ models\ 2011/
+Kepler/
+*.dmg
+__MACOSX/
+*.xcodeproj/
+a.out
+*.o
+lidargl
