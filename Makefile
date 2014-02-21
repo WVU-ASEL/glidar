@@ -8,8 +8,8 @@ MAGICK=`Magick++-config --cppflags --cxxflags --ldflags --libs`
 
 all: lidargl
 
-lidargl: texture.o shader.o main.o
-	$(CC) main.o shader.o texture.o -o lidargl $(LIBS) $(FRAMEWORKS) $(MAGICK_LINKERFLAGS)
+lidargl: texture.o main.o
+	$(CC) main.o texture.o -o lidargl $(LIBS) $(FRAMEWORKS) $(MAGICK_LINKERFLAGS)
 
 main.o: main.cpp
 	$(CC) $(CFLAGS) -c main.cpp $(MAGICK_CFLAGS)
