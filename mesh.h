@@ -18,6 +18,7 @@
 #include "texture.h"
 
 
+// Use this struct to represent vertex coordinates, texture coordinates, and the normal coordinates for this vertex.
 struct Vertex
 {
   glm::vec3 pos;
@@ -49,7 +50,7 @@ public:
       bool ret = false;
       Assimp::Importer importer;
 
-      const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FixInfacingNormals);
+      const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate); // | aiProcess_GenNormals | aiProcess_FixInfacingNormals);
 
       if (scene)    ret = init_from_scene(scene, filename);
       else std::cerr << "Error parsing '" << filename << "': " << importer.GetErrorString() << std::endl;
@@ -57,7 +58,7 @@ public:
       return ret;
     }
 
-    void render(Shader& shader_program) {
+    void render(Shader* shader_program = NULL) {
       glEnableVertexAttribArray(0);
       glEnableVertexAttribArray(1);
       glEnableVertexAttribArray(2);
@@ -65,24 +66,33 @@ public:
       for (size_t i = 0; i < entries.size(); ++i) {
         glBindBuffer(GL_ARRAY_BUFFER, entries[i].vb);
 
+        // I think this tells it where to look for the vertex information we've loaded.
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20); // makes room for 5 floats
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entries[i].ib);
 
         const size_t material_index = entries[i].material_index;
 
+
         if (material_index < textures.size() && textures[material_index]) {
           textures[material_index]->bind(GL_TEXTURE0, shader_program);
         }
 
+        glColor4f(1.0, 1.0, 1.0, 0.5);
         glDrawElements(GL_TRIANGLES, entries[i].num_indices, GL_UNSIGNED_INT, 0);
+      }
+
+      GLenum error_check_value = glGetError();
+      if (error_check_value != GL_NO_ERROR) {
+        std::cerr << "Could not create a VBO: " << gluErrorString(error_check_value) << std::endl;
       }
 
       glDisableVertexAttribArray(0);
       glDisableVertexAttribArray(1);
       glDisableVertexAttribArray(2);
+
     }
 
 private:
@@ -148,12 +158,12 @@ private:
         std::cerr << "Scene has textures!" << std::endl;
 
       for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
-        std::cerr << "Loading material " << i << " of " << scene->mNumMaterials << std::endl;
+        std::cerr << "Loading material " << i+1 << " of " << scene->mNumMaterials << std::endl;
         const aiMaterial* material = scene->mMaterials[i];
 
-        for (size_t i = 0; i <= static_cast<size_t>(aiTextureType_UNKNOWN); ++i) {
-          std::cerr << "texture count for " << i << " is " << material->GetTextureCount(static_cast<aiTextureType>(i)) << std::endl;
-        }
+        //for (size_t i = 0; i <= static_cast<size_t>(aiTextureType_UNKNOWN); ++i) {
+        //  std::cerr << "texture count for " << i << " is " << material->GetTextureCount(static_cast<aiTextureType>(i)) << std::endl;
+        //}
 
         textures[i] = NULL;
         if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
@@ -220,8 +230,8 @@ private:
 
         GLuint vb;
         GLuint ib;
-        unsigned int num_indices;
-        unsigned int material_index;
+        size_t num_indices;
+        size_t material_index;
     };
 
     std::vector<MeshEntry> entries;

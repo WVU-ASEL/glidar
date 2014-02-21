@@ -33,10 +33,14 @@ public:
 
     bool load();
 
-    void bind(GLenum texture_unit, Shader& shader_program) {
+    void bind(GLenum texture_unit, Shader* shader_program = NULL) {
       glActiveTexture(texture_unit);
-      GLint texture_location = glGetUniformLocation(shader_program.id(), "texture_color");
-      glUniform1i(texture_location, 0);
+
+      if (shader_program) {
+        GLint texture_location = glGetUniformLocation(shader_program->id(), "texture_color");
+        glUniform1i(texture_location, 0);
+      }
+
       glBindTexture(texture_target, texture_object);
     }
 

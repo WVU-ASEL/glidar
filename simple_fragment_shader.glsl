@@ -12,9 +12,9 @@ void main()
 }
 */
 
-uniform sampler2D texture_color;
+//uniform sampler2D texture_color;
 
 void main() {
   // Set the output color of our current pixel
-  gl_FragColor = texture2D(texture_color, gl_TexCoord[0].st);
+  gl_FragColor = vec4(1,1,1,1); // texture2D(texture_color, gl_TexCoord[0].st);
 }

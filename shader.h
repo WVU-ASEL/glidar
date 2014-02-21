@@ -51,7 +51,7 @@ public:
     glUseProgram(shader_id);
   }
   void unbind() {
-    glUseProgram(NULL);
+    glUseProgram(0);
   }
 
   GLuint id() { return shader_id; }
