@@ -13,13 +13,21 @@ public:
     mesh.load_mesh(filename);
   }
 
+  void move_camera(float z) {
+    glMatrixMode(GL_PROJECTION);
+    glTranslatef(0.0, 0.0, z);
+
+    glMatrixMode(GL_MODELVIEW);
+  }
+
 
   void setup() {
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
+    glEnable(GL_NORMALIZE);
 
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -27,10 +35,22 @@ public:
     std::cerr << "Initial position is (0,0,-1000) with clipping plane 1.0, 1250.0" << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
     gluPerspective(20.0f, ASPECT_RATIO, 1.0, 1250.0);
+    setup_lidar_spotlight();
     glTranslatef(0.0, 0.0, -1000.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+  }
+
+  void setup_lidar_spotlight() {
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    GLfloat light_position[] = { 0.0, 0.0, 0.0, 0.0 };
+    GLfloat spot_cutoff[] = {10.0};
+    //    GLfloat light_direction[] = { 0.0, 0.0, 1.0 };
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+    // glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, light_direction);
+    glLightfv(GL_LIGHT0, GL_SPOT_CUTOFF, spot_cutoff);
   }
 
   /*
@@ -76,7 +96,7 @@ public:
     glPopMatrix();
   }
 
-  void render() {
+  void render(Shader* shader_program) {
     // clear window with the current clearing color, and clear the depth buffer
     glClear(GL_COLOR_BUFFER_BIT); // | GL_DEPTH_BUFFER_BIT);
 
@@ -104,8 +124,28 @@ public:
 
     glColor3ub(1,1,1);
 
+    glPushMatrix();
+
+    // Move out the test triangles a little bit so they don't overlap exactly with the ones we're concerned about.
+    glScalef(1.1, 1.1, 1.1);
+
+    // This one represents the first triangle that *should* be drawn.
+    glBegin(GL_TRIANGLES);
+      glVertex3f(0.054495, 0.316926, 0.219461);
+      glVertex3f(0.045369, 0.325283, 0.21396);
+      glVertex3f(0.041455, 0.315326, 0.219885);
+    glEnd();
+
+    // This one represents the normal triangle that *is* drawn.
+    glBegin(GL_TRIANGLES);
+      glVertex3f(0.196087, 0.703365, 0.683248);
+      glVertex3f(0.161623, 0.77864,  0.606299);
+      glVertex3f(0.215941, 0.730595, 0.647766);
+    glEnd();
+    glPopMatrix();
+
     // Render the mesh.
-    mesh.render();
+    mesh.render(shader_program);
 
     glPopMatrix();
 

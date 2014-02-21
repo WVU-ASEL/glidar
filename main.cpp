@@ -18,14 +18,14 @@ using std::cout;
 using std::endl;
 
 const GLdouble FOV = 20.0;
-const float SPEED = 3.0f;
+const float SPEED = 12.0f;
 
 
 // Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp
 int main(int argc, char** argv) {
 
-  std::string model_filename(argc > 1 ? argv[1] : "n20r4_d5.obj");
-  float model_scale_factor(argc > 2 ? atof(argv[2]) : 1.0);
+  std::string model_filename(argc > 1 ? argv[1] : "test.obj");
+  float model_scale_factor(argc > 2 ? atof(argv[2]) : 100.0);
 
   std::cerr << "Loading model " << model_filename << std::endl;
   std::cerr << "Scaling model by " << model_scale_factor << std::endl;
@@ -69,25 +69,22 @@ int main(int argc, char** argv) {
          current_time = glfwGetTime();
   float delta_time = current_time - last_time;
 
+  Shader shader_program("phong_vertex.glsl", "simple_fragment_shader.glsl");
+
   scene.setup();
 
   do {
-    /*
+
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-      view = glm::translate(view, glm::vec3(0,0,1) * delta_time * SPEED);
-      mv = view * model;
-      mvp = projection * mv;
-      std::cerr << "Camera position: " << camera_pos[0] << '\t' << camera_pos[1] << '\t' << camera_pos[2] << std::endl;
+      scene.move_camera(delta_time * SPEED);
     }
 
-    if (glfwGetKey(window, GLFW_MOD_SHIFT | GLFW_KEY_EQUAL) == GLFW_PRESS) {
-      view = glm::translate(view, glm::vec3(0,0,-1) * delta_time * SPEED);
-      mv = view * model;
-      mvp = projection * mv;
-      std::cerr << "Camera position: " << camera_pos[0] << '\t' << camera_pos[1] << '\t' << camera_pos[2] << std::endl;
-    }*/
 
-    scene.render();
+    if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
+      scene.move_camera(delta_time * -SPEED);
+    }
+
+    scene.render(&shader_program);
 
     glfwSwapBuffers(window);
     glfwPollEvents();

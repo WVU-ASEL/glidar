@@ -29,11 +29,34 @@
 class Texture
 {
 public:
-    Texture(GLenum texture_target_, const std::string& filename_);
+    Texture(GLenum texture_target_, const std::string& filename_)
+    : filename(filename_),
+      texture_target(texture_target_),
+      image(NULL)
+    { }
 
-    bool load();
+    bool load() {
+      try {
+        std::cerr << "Attempting to load texture from " << filename << std::endl;
+        image = new Magick::Image(filename);
+        image->write(&blob, "RGBA");
+      }
+      catch (Magick::Error& error) {
+        std::cout << "Error loading texture '" << filename << "': " << error.what() << std::endl;
+        return false;
+      }
 
-    void bind(GLenum texture_unit, Shader* shader_program = NULL) {
+      glGenTextures(1, &texture_object);
+      glBindTexture(texture_target, texture_object);
+      glTexImage2D(texture_target, 0, GL_RGB, image->columns(), image->rows(), 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
+      glTexParameterf(texture_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameterf(texture_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+      return true;
+    }
+
+
+  void bind(GLenum texture_unit, Shader* shader_program = NULL) {
       glActiveTexture(texture_unit);
 
       if (shader_program) {

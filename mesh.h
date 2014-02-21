@@ -50,7 +50,7 @@ public:
       bool ret = false;
       Assimp::Importer importer;
 
-      const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate); // | aiProcess_GenNormals | aiProcess_FixInfacingNormals);
+      const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals); //| aiProcess_FixInfacingNormals);
 
       if (scene)    ret = init_from_scene(scene, filename);
       else std::cerr << "Error parsing '" << filename << "': " << importer.GetErrorString() << std::endl;
@@ -59,6 +59,7 @@ public:
     }
 
     void render(Shader* shader_program = NULL) {
+      if (shader_program) shader_program->bind();
       glEnableVertexAttribArray(0);
       glEnableVertexAttribArray(1);
       glEnableVertexAttribArray(2);
@@ -68,7 +69,7 @@ public:
 
         // I think this tells it where to look for the vertex information we've loaded.
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20); // makes room for 5 floats
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entries[i].ib);
@@ -92,7 +93,7 @@ public:
       glDisableVertexAttribArray(0);
       glDisableVertexAttribArray(1);
       glDisableVertexAttribArray(2);
-
+      if (shader_program) shader_program->unbind();
     }
 
 private:
@@ -117,7 +118,7 @@ private:
 
       const aiVector3D zero_3d(0.0, 0.0, 0.0);
 
-      for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+      for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         const aiVector3D* pos    = &(mesh->mVertices[i]);
         const aiVector3D* normal = &(mesh->mNormals[i]);
         const aiVector3D* texture_coord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][i]) : &zero_3d;
