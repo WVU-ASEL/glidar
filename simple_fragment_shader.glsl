@@ -6,6 +6,7 @@ varying vec3 normal0;
 varying vec3 light_dir;
 varying float cos_angle;
 
+
 uniform sampler2D texture_color;
 
 void main() {
@@ -18,7 +19,7 @@ void main() {
   cf = intensity * tex_col.rgb;
   af = tex_col.a;
 
-  if (cos_angle > cos(radians(10.0)))
+  if (cos_angle < cos(radians(10.0)))
     gl_FragColor = vec4(cf,af);
   else
     gl_FragColor = vec4(cos_angle*cf*0.5, af);

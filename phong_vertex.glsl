@@ -27,7 +27,7 @@ void main() {
   tex_coord0 = tex;
   normal0 = normalize(gl_NormalMatrix * normal);
   //light_dir = normalize(vec3(-gl_LightSource[0].position));
-  light_dir = normalize(vec3(gl_Position));
+  light_dir = normalize(vec3(0.0,0.0,1.0));
   //cos_angle = length(light_dir.xyz)*1000.0 / length(position.xyz);
   cos_angle = dot(normalize(position.xyz), normalize(light_dir.xyz));
 /*  if (angle < 10.0)

@@ -13,11 +13,13 @@ public:
     mesh.load_mesh(filename);
   }
 
-  void move_camera(float z) {
+  void move_camera(Shader* shader_program, float z) {
     glMatrixMode(GL_PROJECTION);
+    GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
     glTranslatef(0.0, 0.0, z);
 
     camera_z += z;
+    glUniform1f(camera_z_id, camera_z);
   }
 
   void rotate_model(Shader* shader_program, float x, float y, float z) {
@@ -101,6 +103,10 @@ public:
     glEnable(GL_NORMALIZE);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_COLOR_MATERIAL);
+    glEnable(GL_BLEND);
+    //glBlendFuncSeparate(GL_ONE, GL_ONE, GL_SRC_ALPHA, GL_SRC_ALPHA);
+    //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glDepthFunc(GL_LEQUAL);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);

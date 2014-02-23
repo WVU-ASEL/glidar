@@ -72,7 +72,8 @@ int main(int argc, char** argv) {
          current_time = glfwGetTime();
   float delta_time = current_time - last_time;
 
-  Shader shader_program("phong_vertex.glsl", "simple_fragment_shader.glsl");
+  Shader shader_program("spotv.glsl", "spotf.glsl");
+  //Shader shader_program("phong_vertex.glsl", "simple_fragment_shader.glsl");
 
   scene.setup();
 
@@ -81,12 +82,12 @@ int main(int argc, char** argv) {
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-      scene.move_camera(delta_time * SPEED);
+      scene.move_camera(&shader_program, delta_time * SPEED);
     }
 
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-      scene.move_camera(delta_time * -SPEED);
+      scene.move_camera(&shader_program, delta_time * -SPEED);
     }
 
     rx += model_rotate_x * delta_time;
