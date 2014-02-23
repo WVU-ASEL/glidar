@@ -26,6 +26,9 @@ int main(int argc, char** argv) {
 
   std::string model_filename(argc > 1 ? argv[1] : "test.obj");
   float model_scale_factor(argc > 2 ? atof(argv[2]) : 100.0);
+  float model_rotate_x(argc > 3 ? atof(argv[3]) : 0.0);
+  float model_rotate_y(argc > 4 ? atof(argv[4]) : 0.0);
+  float model_rotate_z(argc > 5 ? atof(argv[5]) : 0.0);
 
   std::cerr << "Loading model " << model_filename << std::endl;
   std::cerr << "Scaling model by " << model_scale_factor << std::endl;
@@ -73,6 +76,8 @@ int main(int argc, char** argv) {
 
   scene.setup();
 
+  float rx = 0.0, ry = 0.0, rz = 0.0;
+
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
@@ -84,7 +89,12 @@ int main(int argc, char** argv) {
       scene.move_camera(delta_time * -SPEED);
     }
 
-    scene.render(&shader_program);
+    rx += model_rotate_x * delta_time;
+    ry += model_rotate_y * delta_time;
+    rz += model_rotate_z * delta_time;
+
+
+    scene.render(&shader_program, rx, ry, rz);
 
     glfwSwapBuffers(window);
     glfwPollEvents();

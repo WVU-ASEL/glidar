@@ -50,7 +50,7 @@ public:
       bool ret = false;
       Assimp::Importer importer;
 
-      const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals); //| aiProcess_FixInfacingNormals);
+      const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FixInfacingNormals); //| aiProcess_FixInfacingNormals);
 
       if (scene)    ret = init_from_scene(scene, filename);
       else std::cerr << "Error parsing '" << filename << "': " << importer.GetErrorString() << std::endl;
@@ -58,19 +58,24 @@ public:
       return ret;
     }
 
-    void render(Shader* shader_program = NULL) {
-      if (shader_program) shader_program->bind();
-      glEnableVertexAttribArray(0);
-      glEnableVertexAttribArray(1);
-      glEnableVertexAttribArray(2);
+    void render(Shader* shader_program) {
+      shader_program->bind();
+
+      GLuint position_loc = glGetAttribLocation(shader_program->id(), "position");
+      GLuint tex_loc      = glGetAttribLocation(shader_program->id(), "tex");
+      GLuint normal_loc   = glGetAttribLocation(shader_program->id(), "normal");
+
+      glEnableVertexAttribArray(position_loc);
+      glEnableVertexAttribArray(tex_loc);
+      glEnableVertexAttribArray(normal_loc);
 
       for (size_t i = 0; i < entries.size(); ++i) {
         glBindBuffer(GL_ARRAY_BUFFER, entries[i].vb);
 
         // I think this tells it where to look for the vertex information we've loaded.
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20); // makes room for 5 floats
+        glVertexAttribPointer(position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+        glVertexAttribPointer(tex_loc,      2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
+        glVertexAttribPointer(normal_loc,   3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20); // makes room for 5 floats
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entries[i].ib);
 
@@ -81,7 +86,7 @@ public:
           textures[material_index]->bind(GL_TEXTURE0, shader_program);
         }
 
-        glColor4f(1.0, 1.0, 1.0, 0.5);
+        //glColor4f(1.0, 1.0, 1.0, 1.0);
         glDrawElements(GL_TRIANGLES, entries[i].num_indices, GL_UNSIGNED_INT, 0);
       }
 
@@ -90,10 +95,11 @@ public:
         std::cerr << "Could not create a VBO: " << gluErrorString(error_check_value) << std::endl;
       }
 
-      glDisableVertexAttribArray(0);
-      glDisableVertexAttribArray(1);
-      glDisableVertexAttribArray(2);
-      if (shader_program) shader_program->unbind();
+      glDisableVertexAttribArray(position_loc);
+      glDisableVertexAttribArray(tex_loc);
+      glDisableVertexAttribArray(normal_loc);
+
+      shader_program->unbind();
     }
 
 private:
@@ -133,7 +139,10 @@ private:
       // Add vertices for each face
       for (unsigned int i = 0; i < mesh->mNumFaces; ++i) {
         const aiFace& face = mesh->mFaces[i];
-        assert(face.mNumIndices == 3);
+        if (face.mNumIndices != 3) {
+          std::cerr << "Face has " << face.mNumIndices << " indices; skipping" << std::endl;
+          continue;
+        }
         indices.push_back(face.mIndices[0]);
         indices.push_back(face.mIndices[1]);
         indices.push_back(face.mIndices[2]);
@@ -187,6 +196,7 @@ private:
 
         // This code handles most of our models --- which have no textures:
         if (!textures[i]) {
+          glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
           textures[i] = new Texture(GL_TEXTURE_2D, "./white.png");
           ret = textures[i]->load();
         }

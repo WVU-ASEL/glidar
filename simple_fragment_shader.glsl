@@ -4,12 +4,13 @@ varying vec2 tex_coord0;
 varying vec3 normal0;
 
 varying vec3 light_dir;
+varying float cos_angle;
 
 uniform sampler2D texture_color;
 
 void main() {
   vec3 cf;
-  float intensity, af;
+  float intensity, af, angle;
   vec4 tex_col = texture2D(texture_color, gl_TexCoord[0].st);
 
   intensity = max(dot(light_dir, normalize(normal0)), 0.0);
@@ -17,7 +18,10 @@ void main() {
   cf = intensity * tex_col.rgb;
   af = tex_col.a;
 
-  gl_FragColor = vec4(cf,af);
+  if (cos_angle > cos(radians(10.0)))
+    gl_FragColor = vec4(cf,af);
+  else
+    gl_FragColor = vec4(cos_angle*cf*0.5, af);
 }
 
 //varying vec4 frag_color;
