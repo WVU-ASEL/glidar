@@ -14,6 +14,7 @@ varying vec4  diffuse;
 varying vec4  ambient;
 varying vec4  specular;
 varying vec3  half_vector;
+varying vec3  ec_pos;
 
 void main() {
   float n_dot_l;
@@ -24,6 +25,8 @@ void main() {
   normal0 = normalize(gl_NormalMatrix * normal);
 
   light_dir = normalize(vec3(0.0, 0.0, 1.0));
+
+  ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
 
   half_vector = normalize(light_dir + light_dir);
 
