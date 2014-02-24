@@ -50,7 +50,7 @@ public:
 
     std::cerr << "Initial position is (0,0,-1000) with clipping plane 1.0, 1250.0" << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
-    gluPerspective(10.0f, ASPECT_RATIO, 0.1, camera_z * 1.25);
+    gluPerspective(20.0f, ASPECT_RATIO, 1.0, camera_z * 1.25);
     glTranslatef(0.0, 0.0, -camera_z);
 
     glUseProgram(shader_program->id());

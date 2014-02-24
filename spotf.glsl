@@ -35,7 +35,7 @@ void main() {
 
     spot_effect = dot(normalize(light_dir), normalize(light_dir0));
 
-    if (spot_effect > cos(radians(3))) {
+    if (spot_effect > cos(radians(10))) {
       spot_effect = pow(spot_effect, SPOT_EXP);
       att = spot_effect / (CATT + LATT*dist + QATT*dist*dist);
 
