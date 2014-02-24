@@ -14,13 +14,13 @@ varying vec3 ec_pos;
 uniform sampler2D texture_color;
 
 void main() {
-
+  const float GLOBAL_AMBIENT = 0.2;
   float n_dot_l, n_dot_hv, att;
   vec3 cf;
-  vec4 color = texture2D(texture_color, gl_TexCoord[0].st);
+  vec4 color = texture2D(texture_color, gl_TexCoord[0].st) * GLOBAL_AMBIENT;
   float spot_effect;
-  float SHININESS = 0.001;
-  float CATT = 0.1, LATT = 0.1, QATT = 0.1, SPOT_EXP = 500.0;
+  float SHININESS = 128.0;
+  float CATT = 0.9, LATT = 0.01, QATT = 0.01, SPOT_EXP = 0.01;
 
   vec3 light_dir0 = normalize(vec3(0.0, 0.0, 1000.0) - ec_pos);
 
@@ -28,8 +28,6 @@ void main() {
 
   n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
 
-  //cf = n_dot_l * color.rgb;
-  //af = color.a;
 
   if (n_dot_l > 0.0) {
 
@@ -39,7 +37,7 @@ void main() {
     att = spot_effect / (CATT + LATT*dist + QATT*dist*dist);
 
 
-    color *= att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
+    color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
 
     n_dot_hv = max(dot(normal0,half_vector), 0.0);
     color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, SHININESS); // gl_FrontMaterial.specular * specular; //
