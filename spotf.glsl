@@ -49,20 +49,11 @@ void main() {
 
       color.a = 1.0;
     } else {
-//      color.rgb = vec3(0.0, 0.0, 0.0);
       color.a = 1.0;
     }
-    //color.a = 1.0;
   } else {
-    //color.rgb = vec3(0.0, 0.0, 0.0);
     color.a = 1.0;
   }
 
   gl_FragColor = color;
-
-
-  //if (cos_angle > cos(radians(10.0)))
-  //gl_FragColor = color;
- // else
- //   gl_FragColor = vec4(cos_angle*cf*0.5, af);
 }

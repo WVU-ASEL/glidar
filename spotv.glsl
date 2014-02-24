@@ -34,11 +34,8 @@ void main() {
 
   diffuse = gl_FrontMaterial.diffuse * SPOTLIGHT_DIFFUSE;
   ambient = gl_FrontMaterial.ambient * SPOTLIGHT_AMBIENT;
-  //ambient += gl_LightModel.ambient * gl_FrontMaterial.ambient;
 
   n_dot_l = max(dot(normal0, light_dir), 0.0);
 
   gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 1.0);
-
-  //cos_angle = dot(normalize(position.xyz), normalize(light_dir.xyz));
 }
