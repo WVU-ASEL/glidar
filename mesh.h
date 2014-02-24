@@ -39,9 +39,15 @@ struct Vertex
 // Ganked from: http://ogldev.atspace.co.uk/www/tutorial22/tutorial22.html
 class Mesh {
 public:
-    Mesh() { }
+    Mesh() : min_extremities(0.0f,0.0f,0.0f), max_extremities(0.0f,0.0f,0.0f) { }
 
     ~Mesh() { clear(); }
+
+
+    glm::vec3 dimensions() const {
+      return max_extremities - min_extremities;
+    }
+
 
     bool load_mesh(const std::string& filename) {
       // release the previously loaded mesh if it exists
@@ -124,10 +130,31 @@ private:
 
       const aiVector3D zero_3d(0.0, 0.0, 0.0);
 
+
+      // initialize our dimension trackers.
+      if (mesh->mNumVertices != 0) {
+        min_extremities.x = mesh->mVertices[0].x;
+        min_extremities.y = mesh->mVertices[0].y;
+        min_extremities.z = mesh->mVertices[0].z;
+        max_extremities = min_extremities;
+      }
+
+
       for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
         const aiVector3D* pos    = &(mesh->mVertices[i]);
         const aiVector3D* normal = &(mesh->mNormals[i]);
         const aiVector3D* texture_coord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][i]) : &zero_3d;
+
+        // Find the extremities of this mesh so we can get a measurement for the object in object units.
+        if (pos->x < min_extremities.x)       min_extremities.x = pos->x;
+        else if (pos->x > max_extremities.x)  max_extremities.x = pos->x;
+
+        if (pos->y < min_extremities.y)       min_extremities.y = pos->y;
+        else if (pos->y > max_extremities.y)  max_extremities.y = pos->y;
+
+        if (pos->z < min_extremities.z)       min_extremities.z = pos->z;
+        else if (pos->z > max_extremities.z)  max_extremities.z = pos->z;
+
 
         Vertex v(glm::vec3(pos->x, pos->y, pos->z),
             glm::vec2(texture_coord->x, texture_coord->y),
@@ -248,8 +275,10 @@ private:
         size_t material_index;
     };
 
+
     std::vector<MeshEntry> entries;
     std::vector<Texture*> textures;
+    glm::vec3 min_extremities, max_extremities;
 };
 
 

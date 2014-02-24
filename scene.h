@@ -11,6 +11,9 @@ public:
   : scale_factor(scale_factor_), camera_z(1000.0)
   {
     mesh.load_mesh(filename);
+
+    glm::vec3 dimensions = mesh.dimensions();
+    std::cerr << "Object dimensions as modeled: " << dimensions.x << '\t' << dimensions.y << '\t' << dimensions.z << std::endl;
   }
 
   void move_camera(Shader* shader_program, float z) {

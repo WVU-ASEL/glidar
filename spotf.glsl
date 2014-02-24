@@ -19,7 +19,7 @@ void main() {
   const float GLOBAL_AMBIENT = 0.2;
   float n_dot_l, n_dot_hv, att;
   vec3 cf;
-  vec4 color = texture2D(texture_color, gl_TexCoord[0].st) * GLOBAL_AMBIENT;
+  vec4 color = gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st);
   float spot_effect;
   float SHININESS = 128.0;
   float CATT = 0.9, LATT = 0.01, QATT = 0.01, SPOT_EXP = 0.01;
@@ -29,6 +29,8 @@ void main() {
   float dist = length(light_dir0);
 
   n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
+
+  color += GLOBAL_AMBIENT * gl_FrontMaterial.ambient;
 
 
   if (n_dot_l > 0.0) {
