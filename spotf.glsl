@@ -11,6 +11,8 @@ varying vec4  specular;
 varying vec3 half_vector;
 varying vec3 ec_pos;
 
+uniform float camera_z;
+
 uniform sampler2D texture_color;
 
 void main() {
@@ -22,7 +24,7 @@ void main() {
   float SHININESS = 128.0;
   float CATT = 0.9, LATT = 0.01, QATT = 0.01, SPOT_EXP = 0.01;
 
-  vec3 light_dir0 = normalize(vec3(0.0, 0.0, 1000.0) - ec_pos);
+  vec3 light_dir0 = normalize(vec3(0.0, 0.0, camera_z) - ec_pos);
 
   float dist = length(light_dir0);
 

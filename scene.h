@@ -15,11 +15,15 @@ public:
 
   void move_camera(Shader* shader_program, float z) {
     glMatrixMode(GL_PROJECTION);
+
+    glUseProgram(shader_program->id());
     GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
     glTranslatef(0.0, 0.0, z);
 
-    camera_z += z;
-    glUniform1f(camera_z_id, camera_z);
+    camera_z -= z;
+
+    std::cerr << "camera_z is now " << camera_z << std::endl;
+    glUniform1fv(camera_z_id, 1, &camera_z);
   }
 
   void rotate_model(Shader* shader_program, float x, float y, float z) {
@@ -36,7 +40,7 @@ public:
   }
 
 
-  void setup(float initial_pos = 1000.0) {
+  void setup(Shader* shader_program) {
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
     glPolygonMode( GL_FRONT, GL_FILL );
@@ -47,7 +51,13 @@ public:
     std::cerr << "Initial position is (0,0,-1000) with clipping plane 1.0, 1250.0" << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
     gluPerspective(10.0f, ASPECT_RATIO, 0.1, camera_z * 1.25);
-    glTranslatef(0.0, 0.0, -initial_pos);
+    glTranslatef(0.0, 0.0, -camera_z);
+
+    glUseProgram(shader_program->id());
+    GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
+
+    std::cerr << "camera_z is now " << camera_z << std::endl;
+    glUniform1fv(camera_z_id, 1, &camera_z);
 
 
     glMatrixMode(GL_MODELVIEW);

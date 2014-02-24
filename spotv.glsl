@@ -4,7 +4,7 @@ attribute vec3 position;
 attribute vec2 tex;
 attribute vec3 normal;
 
-uniform float camera_z;
+//uniform float camera_z;
 
 varying vec3 normal0;
 

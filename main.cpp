@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
   Shader shader_program("spotv.glsl", "spotf.glsl");
   //Shader shader_program("phong_vertex.glsl", "simple_fragment_shader.glsl");
 
-  scene.setup();
+  scene.setup(&shader_program);
 
   float rx = 0.0, ry = 0.0, rz = 0.0;
 
