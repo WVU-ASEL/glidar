@@ -18,8 +18,6 @@ varying vec3  ec_pos;
 
 void main() {
   float n_dot_l;
-  const vec4 SPOTLIGHT_DIFFUSE = vec4(1.0, 1.0, 1.0, 1.0);
-  const vec4 SPOTLIGHT_AMBIENT = vec4(0.2, 0.2, 0.2, 1.0);
   specular = vec4(1.0, 1.0, 1.0, 1.0);
 
   normal0 = normalize(gl_NormalMatrix * normal);
@@ -32,8 +30,8 @@ void main() {
 
   gl_TexCoord[0].st = tex;
 
-  diffuse = gl_FrontMaterial.diffuse * SPOTLIGHT_DIFFUSE;
-  ambient = gl_FrontMaterial.ambient * SPOTLIGHT_AMBIENT;
+  diffuse = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
+  ambient = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
 
   n_dot_l = max(dot(normal0, light_dir), 0.0);
 

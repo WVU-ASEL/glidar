@@ -45,7 +45,7 @@ void main() {
       color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
 
       n_dot_hv = max(dot(normal0,half_vector), 0.0);
-      color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, SHININESS); // gl_FrontMaterial.specular * specular; //
+      color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess); // gl_FrontMaterial.specular * specular; //
 
       color.a = 1.0;
     } else {
