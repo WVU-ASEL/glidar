@@ -31,21 +31,26 @@ void main() {
 
   if (n_dot_l > 0.0) {
 
-    spot_effect = dot(normalize(light_dir), normalize(-light_dir));
+    spot_effect = dot(normalize(light_dir), normalize(light_dir0));
 
-    spot_effect = pow(spot_effect, SPOT_EXP);
-    att = spot_effect / (CATT + LATT*dist + QATT*dist*dist);
+    if (spot_effect > cos(radians(3))) {
+      spot_effect = pow(spot_effect, SPOT_EXP);
+      att = spot_effect / (CATT + LATT*dist + QATT*dist*dist);
 
 
-    color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
+      color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
 
-    n_dot_hv = max(dot(normal0,half_vector), 0.0);
-    color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, SHININESS); // gl_FrontMaterial.specular * specular; //
+      n_dot_hv = max(dot(normal0,half_vector), 0.0);
+      color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, SHININESS); // gl_FrontMaterial.specular * specular; //
 
-    color.a = 1.0;
+      color.a = 1.0;
+    } else {
+//      color.rgb = vec3(0.0, 0.0, 0.0);
+      color.a = 1.0;
+    }
     //color.a = 1.0;
   } else {
-    color.rgb = vec3(0.0, 0.0, 0.0);
+    //color.rgb = vec3(0.0, 0.0, 0.0);
     color.a = 1.0;
   }
 
