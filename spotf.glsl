@@ -19,8 +19,8 @@ void main() {
   vec3 cf;
   vec4 color = texture2D(texture_color, gl_TexCoord[0].st);
   float spot_effect;
-  float SHININESS = 0.1;
-  float CATT = 0.1, LATT = 0.1, QATT = 0.1, SPOT_EXP = 1.0;
+  float SHININESS = 0.001;
+  float CATT = 0.1, LATT = 0.1, QATT = 0.1, SPOT_EXP = 500.0;
 
   vec3 light_dir0 = normalize(vec3(0.0, 0.0, 1000.0) - ec_pos);
 
