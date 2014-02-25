@@ -22,7 +22,7 @@ void main() {
 
   normal0 = normalize(gl_NormalMatrix * normal);
 
-  light_dir = normalize(vec3(0.0, 0.0, 1.0));
+  light_dir = normalize(gl_LightSource[0].position.xyz);
 
   ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
 
