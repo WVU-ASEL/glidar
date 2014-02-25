@@ -138,8 +138,10 @@ public:
     // For debugging purposes, let's make sure we can see a box.
     render_box();
 
-    glPushMatrix();
 
+    glPushMatrix();
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
 
     // Scale only the mesh.
     glScalef(scale_factor, scale_factor, scale_factor);
@@ -149,6 +151,8 @@ public:
     // Render the mesh.
     mesh.render(shader_program);
 
+    glDisable(GL_LIGHT0);
+    glDisable(GL_LIGHTING);
     glPopMatrix();
 
     // flush drawing commands
