@@ -16,11 +16,6 @@ public:
   Scene(const std::string& filename, float scale_factor_ = 1.0)
   : scale_factor(scale_factor_), camera_z(1000.0)
   {
-    light_position[0] = 0.0;
-    light_position[1] = 0.0;
-    light_position[2] = camera_z;
-    light_position[3] = 0.0;
-
     mesh.load_mesh(filename);
 
     glm::vec3 dimensions = mesh.dimensions();
@@ -156,6 +151,7 @@ public:
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
 
+    float light_position[] = {0.0, 0.0, camera_z, 0.0};
     glLightfv(GL_LIGHT0, GL_POSITION, light_position);
     glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 10.0);
 
@@ -179,7 +175,6 @@ private:
   Mesh mesh;
   float scale_factor;
   float camera_z;
-  GLfloat light_position[4];
 };
 
 #endif

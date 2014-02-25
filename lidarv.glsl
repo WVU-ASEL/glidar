@@ -26,7 +26,7 @@ void main() {
 
   ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
 
-  half_vector = normalize(light_dir + light_dir);
+  half_vector = gl_LightSource[0].halfVector.xyz;
 
   gl_TexCoord[0].st = tex;
 

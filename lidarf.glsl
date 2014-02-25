@@ -26,17 +26,15 @@ void main() {
   vec3 cf;
   vec4 color = gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st);
   float spot_effect;
-  float SHININESS = 128.0;
-  float CATT = 0.9, LATT = 0.01, QATT = 0.01, SPOT_EXP = 0.01;
+
 
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
-  float dist = length(light_dir0) - rand(ec_pos.xy) * 10;// - rand(ec_pos.xy) * length(light_dir0) * 0.95;
+  float dist = length(light_dir0); // - rand(ec_pos.xy) * 10;// - rand(ec_pos.xy) * length(light_dir0) * 0.95;
 
   n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
 
   color += GLOBAL_AMBIENT * gl_FrontMaterial.ambient;
-
 
   if (n_dot_l > 0.0) {
 
@@ -52,7 +50,7 @@ void main() {
       n_dot_hv = max(dot(normal0,half_vector), 0.0);
       color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess); // gl_FrontMaterial.specular * specular; //
 
-      color.b = dist / far_plane;
+      color.b = (dist * (1.0 - 0.05*rand(ec_pos.xy))) / far_plane;
       color.a = 1.0;
     } else {
       color.a = 1.0;
