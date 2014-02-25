@@ -72,8 +72,8 @@ int main(int argc, char** argv) {
          current_time = glfwGetTime();
   float delta_time = current_time - last_time;
 
-  Shader shader_program("spotv.glsl", "spotf.glsl");
-  //Shader shader_program("phong_vertex.glsl", "simple_fragment_shader.glsl");
+  //Shader shader_program("spotv.glsl", "spotf.glsl");
+  Shader shader_program("lidarv.glsl", "lidarf.glsl");
 
   scene.setup(&shader_program);
 

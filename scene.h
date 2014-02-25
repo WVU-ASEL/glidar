@@ -44,7 +44,7 @@ public:
 
 
   void setup(Shader* shader_program) {
-    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glPolygonMode( GL_FRONT, GL_FILL );
 
@@ -53,15 +53,17 @@ public:
 
     std::cerr << "Initial position is (0,0,-1000) with clipping plane 1.0, 1250.0" << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
-    gluPerspective(20.0f, ASPECT_RATIO, 1.0, camera_z * 1.25);
+    float far_plane = camera_z * 1.25;
+    gluPerspective(20.0f, ASPECT_RATIO, 1.0, far_plane);
     glTranslatef(0.0, 0.0, -camera_z);
 
     glUseProgram(shader_program->id());
     GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
+    GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
 
     std::cerr << "camera_z is now " << camera_z << std::endl;
     glUniform1fv(camera_z_id, 1, &camera_z);
-
+    glUniform1fv(far_plane_id, 1, &far_plane);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();

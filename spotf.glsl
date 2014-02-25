@@ -39,7 +39,7 @@ void main() {
 
     if (spot_effect > cos(radians(10))) {
       spot_effect = pow(spot_effect, SPOT_EXP);
-      att = spot_effect / (CATT + LATT*dist + QATT*dist*dist);
+      att = spot_effect / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
 
       color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
