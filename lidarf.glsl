@@ -29,9 +29,9 @@ void main() {
   float SHININESS = 128.0;
   float CATT = 0.9, LATT = 0.01, QATT = 0.01, SPOT_EXP = 0.01;
 
-  vec3 light_dir0 = vec3(0.0, 0.0, camera_z) - ec_pos;
+  vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
-  float dist = length(normalize(light_dir0)) - rand(ec_pos.xy) * 10;// - rand(ec_pos.xy) * length(light_dir0) * 0.95;
+  float dist = length(light_dir0) - rand(ec_pos.xy) * 10;// - rand(ec_pos.xy) * length(light_dir0) * 0.95;
 
   n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
 
@@ -42,8 +42,8 @@ void main() {
 
     spot_effect = dot(normalize(light_dir), normalize(light_dir0));
 
-    if (spot_effect > cos(radians(10))) {
-      spot_effect = pow(spot_effect, SPOT_EXP);
+    if (spot_effect > gl_LightSource[0].spotCosCutoff) {
+      spot_effect = pow(spot_effect, gl_LightSource[0].spotExponent);
       att = spot_effect / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
 
@@ -52,7 +52,7 @@ void main() {
       n_dot_hv = max(dot(normal0,half_vector), 0.0);
       color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess); // gl_FrontMaterial.specular * specular; //
 
-      color.b = (dist + camera_z) / far_plane;
+      color.b = dist / far_plane;
       color.a = 1.0;
     } else {
       color.a = 1.0;

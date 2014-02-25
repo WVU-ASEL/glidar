@@ -1,18 +1,23 @@
 #ifndef SCENE_H
 # define SCENE_H
 
+#include <cmath>
 #include "mesh.h"
 
+#define _USE_MATH_DEFINES
+
 const float ASPECT_RATIO = 1.0;
+const float CAMERA_Y     = 0.05;
+
+const double RADIANS_PER_DEGREE = M_PI / 180.0;
 
 class Scene {
 public:
   Scene(const std::string& filename, float scale_factor_ = 1.0)
   : scale_factor(scale_factor_), camera_z(1000.0)
   {
-    // Place the emitter about 2" from the receiver, which is 0.05 meters.
     light_position[0] = 0.0;
-    light_position[1] = 0.05;
+    light_position[1] = 0.0;
     light_position[2] = camera_z;
     light_position[3] = 0.0;
 
@@ -61,7 +66,9 @@ public:
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
     float far_plane = camera_z * 1.25;
     gluPerspective(20.0f, ASPECT_RATIO, 1.0, far_plane);
-    glTranslatef(0.0, 0.0, -camera_z);
+    glRotatef(std::atan(CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
+    glTranslatef(0.0, CAMERA_Y, -camera_z); // move it 5cm off from the emitter.
+
 
     glUseProgram(shader_program->id());
     GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
@@ -150,6 +157,7 @@ public:
     glEnable(GL_LIGHT0);
 
     glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+    glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 10.0);
 
     // Scale only the mesh.
     glScalef(scale_factor, scale_factor, scale_factor);
