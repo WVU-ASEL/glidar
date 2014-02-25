@@ -71,7 +71,7 @@ public:
 
 
   /*
-   * Draws a simple box in green and red around the origin with dimensions 200 x 200 x 200.
+   * Draws a simple box in green, blue, and red around the origin with dimensions 200 x 200 x 200.
    */
   void render_box() {
     glPushMatrix();
