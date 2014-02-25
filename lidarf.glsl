@@ -16,6 +16,8 @@ uniform float far_plane;
 
 uniform sampler2D texture_color;
 
+// Random number generator without any real testing done.
+// Comes from: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 float rand(vec2 co) {
   return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
 }
@@ -26,7 +28,6 @@ void main() {
   vec3 cf;
   vec4 color = gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st);
   float spot_effect;
-
 
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
@@ -43,7 +44,6 @@ void main() {
     if (spot_effect > gl_LightSource[0].spotCosCutoff) {
       spot_effect = pow(spot_effect, gl_LightSource[0].spotExponent);
       att = spot_effect / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
-
 
       color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
 
