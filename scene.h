@@ -42,6 +42,7 @@ const float CAMERA_Y     = 0.05;
 
 const double RADIANS_PER_DEGREE = M_PI / 180.0;
 
+
 class Scene {
 public:
   Scene(const std::string& filename, float scale_factor_ = 1.0)
@@ -90,8 +91,8 @@ public:
 
     std::cerr << "Initial position is (0,0,-1000) with clipping plane 1.0, 1250.0" << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
-    float far_plane = camera_z * 1.25;
-    gluPerspective(20.0f, ASPECT_RATIO, 1.0, far_plane);
+    float far_plane_ = far_plane();
+    gluPerspective(20.0f, ASPECT_RATIO, 1.0, far_plane_);
     glRotatef(std::atan(CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
     glTranslatef(0.0, CAMERA_Y, -camera_z); // move it 5cm off from the emitter.
 
@@ -102,10 +103,15 @@ public:
 
     std::cerr << "camera_z is now " << camera_z << std::endl;
     glUniform1fv(camera_z_id, 1, &camera_z);
-    glUniform1fv(far_plane_id, 1, &far_plane);
+    glUniform1fv(far_plane_id, 1, &far_plane_);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+  }
+
+
+  float far_plane() const {
+    return camera_z * 1.25;
   }
 
 
@@ -201,6 +207,48 @@ public:
     // flush drawing commands
     glFlush();
   }
+
+
+  /*
+   * Write the current color buffer as a PCD (point cloud file).
+   */
+  /*void save_point_cloud(const std::string& filename, unsigned int width, unsigned int height) {
+    std::ofstream out(filename.c_str());
+
+    // Print PCD header
+    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nSIZE F F F F\nCOUNT 1 1 1 1\n";
+    out << "WIDTH " << width << std::endl;
+    out << "HEIGHT " << height << std::endl;
+    out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
+    out << "POINTS " << width*height << std::endl;
+    out << "DATA ASCII" << std::endl;
+
+    float z = 1.0f;
+    for (size_t i = 0; i < height; ++i) {
+      float y = 1.0f - (2.0f * i) / height;
+
+      for (size_t j = 0; j < width; ++j) {
+
+        float x = (2.0f * j) / width - 1.0f;
+        glm::vec3 nds(x, y, z); // normalized device coordinates
+        glm::vec4 clip(ray_nds.xy, -1.0, 1.0); // clip coordinates
+        //glm::vec4 eye = inverse(projection_matrix) * clip
+        eye = glm::vec4(eye.xy, -1.0, 0.0);
+        // glm::vec3 world = (inverse(view_matrix) * eye).xyz
+        // may need to normalize that
+
+        float rgba[] = {0.0f, 0.0f, 0.0f, 0.0f};
+        glReadPixels(i,j, 1, 1, GL_RGBA, GL_FLOAT, rgba);
+        glm::vec4 xyzi(i, j, 0, 0);
+
+
+        out << i << ' ' << j <<
+      }
+    }
+
+    out.close();
+  } */
+
 
 private:
   Mesh mesh;

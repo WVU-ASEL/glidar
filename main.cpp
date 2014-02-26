@@ -58,6 +58,8 @@ int main(int argc, char** argv) {
   float model_rotate_x(argc > 3 ? atof(argv[3]) : 0.0);
   float model_rotate_y(argc > 4 ? atof(argv[4]) : 0.0);
   float model_rotate_z(argc > 5 ? atof(argv[5]) : 0.0);
+  unsigned int width(argc > 6 ? atoi(argv[6]) : 256);
+  unsigned int height(argc > 7 ? atoi(argv[7]) : 256);
 
   std::cerr << "Loading model " << model_filename << std::endl;
   std::cerr << "Scaling model by " << model_scale_factor << std::endl;
@@ -76,7 +78,7 @@ int main(int argc, char** argv) {
   //std::cerr << "OpenGL version " << glGetString(GL_VERSION) << std::endl;
 
   // Try to open a window
-  GLFWwindow* window = glfwCreateWindow(480, 480, "LIDAR Simulator", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(width, height, "LIDAR Simulator", NULL, NULL);
   if (!window) {
     std::cerr << "Failed to open GLFW window." << std::endl;
     glfwTerminate();
@@ -117,6 +119,53 @@ int main(int argc, char** argv) {
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
       scene.move_camera(&shader_program, delta_time * -SPEED);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+      //scene.save_point_cloud("buffer.pcd", width, height);
+    }
+
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
+      double mouse_x, mouse_y;
+      glfwGetCursorPos(window, &mouse_x, &mouse_y);
+
+      std::cerr << "Click in window at " << mouse_x << ", " << mouse_y << std::endl;
+
+      /*// Transform into 3d normalized device coordinates. Do this by scaling into [-1:1] for x, y, z.
+      float x = (2.0f * mouse_x) / float(width) - 1.0f;
+      float y = 1.0f - (2.0f * mouse_y) / height;
+      float z = 1.0f; // z is not actually needed yet.
+      glm::vec3 normalized_device_coordinates(x, y, z);
+
+      // Transform to 4D homogeneous clip coordinates. Our ray's z should point forwards (which is
+      // the negative z direction). w = 1 for the 4D vector (instead of point).
+      glm::vec4 clip_coordinates(normalized_device_coordinates.xy, -1.0, 1.0); */
+      glm::ivec4 viewport;
+      glm::dmat4 model_view_matrix, projection_matrix;
+      glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
+      glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
+      glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
+
+      // Get near and far plane points
+      glm::dvec3 near, far;
+      gluUnProject(mouse_x, mouse_y, 0.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(near[0]), &(near[1]), &(near[2]));
+      gluUnProject(mouse_x, mouse_y, 1.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(far[0]), &(far[1]), &(far[2]));
+      glm::dvec3 relative_far = near - far;
+      glm::vec4 rgba;
+      glReadPixels(mouse_x, height - mouse_y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
+
+      double t = rgba[2];
+      std::cerr << "\tt = " << t << std::endl;
+
+      std::cerr << "\tnear plane: " << near[0] << '\t' << near[1] << '\t' << near[2] << std::endl;
+      std::cerr << "\tfar plane : " << far[0]  << '\t' << far[1]  << '\t' << far[2]  << std::endl;
+      std::cerr << "\ttrans far : " << relative_far[0] << '\t' << relative_far[1]  << '\t' << relative_far[2]  << std::endl;
+      std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
+
+      glm::dvec3 position = relative_far * t;
+      position[0] = -position[0]; // invert x
+
+      std::cerr << "\tcoords    : " << position[0] << '\t' << position[1] << '\t' << position[2] << std::endl;
     }
 
     rx += model_rotate_x * delta_time;
