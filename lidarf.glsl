@@ -18,8 +18,12 @@ uniform sampler2D texture_color;
 
 // Random number generator without any real testing done.
 // Comes from: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
+//float rand(vec2 co) {
+//  return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
+//}
+
 float rand(vec2 co) {
-  return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
+  return noise1(co) * 0.5 + 0.5;
 }
 
 void main() {
@@ -50,7 +54,7 @@ void main() {
       n_dot_hv = max(dot(normal0,half_vector), 0.0);
       color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess); // gl_FrontMaterial.specular * specular; //
 
-      color.b = (dist * (1.0 - 0.05*rand(ec_pos.xy))) / far_plane;
+      color.b = dist / far_plane; //(dist * (1.0 - 0.05*rand(ec_pos.xy))) / far_plane;
       color.a = 1.0;
     } else {
       color.a = 1.0;

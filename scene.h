@@ -158,7 +158,7 @@ public:
     glPopMatrix();
   }
 
-  void render(Shader* shader_program, float x, float y, float z) {
+  void render(Shader* shader_program, float x, float y, float z, bool box = true) {
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_NORMALIZE);
     glEnable(GL_CULL_FACE);
@@ -181,7 +181,7 @@ public:
     glLoadIdentity();
 
     // For debugging purposes, let's make sure we can see a box.
-    render_box();
+    if (box) render_box();
 
 
     glPushMatrix();
@@ -212,42 +212,50 @@ public:
   /*
    * Write the current color buffer as a PCD (point cloud file).
    */
-  /*void save_point_cloud(const std::string& filename, unsigned int width, unsigned int height) {
+  void save_point_cloud(const std::string& filename, unsigned int width, unsigned int height) {
+
+    std::cerr << "Saving point cloud..." << std::endl;
+
+    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
+    glm::ivec4 viewport;
+    glm::dmat4 model_view_matrix, projection_matrix;
+    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
+    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
+    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
+
     std::ofstream out(filename.c_str());
 
     // Print PCD header
-    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nSIZE F F F F\nCOUNT 1 1 1 1\n";
+    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
     out << "WIDTH " << width << std::endl;
     out << "HEIGHT " << height << std::endl;
     out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
     out << "POINTS " << width*height << std::endl;
     out << "DATA ASCII" << std::endl;
 
-    float z = 1.0f;
     for (size_t i = 0; i < height; ++i) {
-      float y = 1.0f - (2.0f * i) / height;
-
       for (size_t j = 0; j < width; ++j) {
 
-        float x = (2.0f * j) / width - 1.0f;
-        glm::vec3 nds(x, y, z); // normalized device coordinates
-        glm::vec4 clip(ray_nds.xy, -1.0, 1.0); // clip coordinates
-        //glm::vec4 eye = inverse(projection_matrix) * clip
-        eye = glm::vec4(eye.xy, -1.0, 0.0);
-        // glm::vec3 world = (inverse(view_matrix) * eye).xyz
-        // may need to normalize that
+        glm::dvec3 near, far;
+        glm::vec4 rgba;
 
-        float rgba[] = {0.0f, 0.0f, 0.0f, 0.0f};
-        glReadPixels(i,j, 1, 1, GL_RGBA, GL_FLOAT, rgba);
-        glm::vec4 xyzi(i, j, 0, 0);
+        gluUnProject(i, j, 0.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(near[0]), &(near[1]), &(near[2]));
+        gluUnProject(i, j, 1.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(far[0]),  &(far[1]),  &(far[2]));
+        glReadPixels(i, height - j, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
+        glm::dvec3 relative_far = near - far;
 
+        //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
+        glm::dvec3 position = relative_far * (double)(rgba[2]);
+        if (position[0] != 0) position[0] = -position[0];
 
-        out << i << ' ' << j <<
+        out << position[0] << ' ' << position[1] << ' ' << position[2] << ' ' << rgba[0] << '\n';
       }
     }
 
     out.close();
-  } */
+
+    std::cerr << "Saved '" << filename << "'" << std::endl;
+  }
 
 
 private:

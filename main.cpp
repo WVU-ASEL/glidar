@@ -110,6 +110,9 @@ int main(int argc, char** argv) {
 
   float rx = 0.0, ry = 0.0, rz = 0.0;
 
+  bool mouse_button_pressed = false;
+  bool s_key_pressed = false;
+
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
@@ -122,24 +125,33 @@ int main(int argc, char** argv) {
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-      //scene.save_point_cloud("buffer.pcd", width, height);
+      s_key_pressed = true;
+    }
+
+    // Write a PCD file if the user presses the 's' key.
+    if (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
+      // First, re-render without the box, or it'll show up in our point cloud.
+      scene.render(&shader_program, rx, ry, rz, false);
+
+      scene.save_point_cloud("buffer.pcd", width, height);
+      s_key_pressed = false;
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
+      std::cerr << "mouse button pressed!" << std::endl;
+      mouse_button_pressed = true;
+    }
+
+    if (mouse_button_pressed && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE) {
+      mouse_button_pressed = false;
       double mouse_x, mouse_y;
       glfwGetCursorPos(window, &mouse_x, &mouse_y);
 
       std::cerr << "Click in window at " << mouse_x << ", " << mouse_y << std::endl;
 
-      /*// Transform into 3d normalized device coordinates. Do this by scaling into [-1:1] for x, y, z.
-      float x = (2.0f * mouse_x) / float(width) - 1.0f;
-      float y = 1.0f - (2.0f * mouse_y) / height;
-      float z = 1.0f; // z is not actually needed yet.
-      glm::vec3 normalized_device_coordinates(x, y, z);
+      // First, re-render without the box, or it'll show up in our point cloud.
+      scene.render(&shader_program, rx, ry, rz, false);
 
-      // Transform to 4D homogeneous clip coordinates. Our ray's z should point forwards (which is
-      // the negative z direction). w = 1 for the 4D vector (instead of point).
-      glm::vec4 clip_coordinates(normalized_device_coordinates.xy, -1.0, 1.0); */
       glm::ivec4 viewport;
       glm::dmat4 model_view_matrix, projection_matrix;
       glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
@@ -173,7 +185,7 @@ int main(int argc, char** argv) {
     rz += model_rotate_z * delta_time;
 
 
-    scene.render(&shader_program, rx, ry, rz);
+    scene.render(&shader_program, rx, ry, rz, true); // render with the box
 
     glfwSwapBuffers(window);
     glfwPollEvents();
