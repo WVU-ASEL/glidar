@@ -29,7 +29,6 @@ float rand(vec2 co) {
 void main() {
   const float GLOBAL_AMBIENT = 0.2;
   float n_dot_l, n_dot_hv, att;
-  vec3 cf;
   vec4 color = gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st);
   float spot_effect;
 
