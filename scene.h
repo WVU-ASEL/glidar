@@ -170,7 +170,6 @@ public:
     glDepthFunc(GL_LEQUAL);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
-    glDepthRange(0.0, 1.0);
 
 
     // clear window with the current clearing color, and clear the depth buffer
