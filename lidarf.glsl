@@ -28,42 +28,41 @@ float rand(vec2 co) {
 
 void main() {
   const float GLOBAL_AMBIENT = 0.2;
-  float n_dot_l, n_dot_hv, att;
-  vec4 color = gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st);
+  vec4 color = vec4((gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
   float spot_effect;
 
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
   float dist = length(light_dir0); // - rand(ec_pos.xy) * 10;// - rand(ec_pos.xy) * length(light_dir0) * 0.95;
 
-  n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
+  float n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
 
-  color += GLOBAL_AMBIENT * gl_FrontMaterial.ambient;
+  color = vec4(color.r + GLOBAL_AMBIENT * gl_FrontMaterial.ambient.r, 0.0, 0.0, 1.0);
 
   if (n_dot_l > 0.0) {
 
-    spot_effect = dot(normalize(light_dir), normalize(light_dir0));
+    // Calculate the angle w.r.t. the spotlight.
+    float spot_effect = dot(normalize(light_dir), normalize(light_dir0));
 
     if (spot_effect > gl_LightSource[0].spotCosCutoff) {
       spot_effect = pow(spot_effect, gl_LightSource[0].spotExponent);
-      att = spot_effect / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
+      float att = spot_effect / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
-      color += att * (n_dot_l * diffuse + ambient); //diffuse * n_dot_l;
+      color += att * (n_dot_l * diffuse + ambient);
 
-      n_dot_hv = max(dot(normal0,half_vector), 0.0);
-      color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess); // gl_FrontMaterial.specular * specular; //
+      float n_dot_hv = max(dot(normal0,half_vector), 0.0);
+      color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
       color.b = dist / far_plane; //(dist * (1.0 - 0.05*rand(ec_pos.xy))) / far_plane;
       color.a = 1.0;
+      color.g = 0;
     } else {
-      color.a = 1.0;
+      color = vec4(0.0,0.0,0.0,1.0);
     }
   } else {
-    color.a = 1.0;
+    color = vec4(0.0,0.0,0.0,1.0);
   }
 
-  color.g = 0;
-  //color.b = dist;
-
   gl_FragColor = color;
+  //gl_FragDepth = dist;
 }
