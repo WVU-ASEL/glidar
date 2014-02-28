@@ -149,14 +149,13 @@ public:
 
   glm::dvec3 unproject(glm::vec4& rgba, const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
     glReadPixels(x, height - y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-
-    double dist = rgba[2] * (far_plane - real_near_plane) + real_near_plane;// * real_near_plane / far_plane;
-    //std::cerr << "blue channel = t = " << rgba[2] << std::endl;
-    //std::cerr << "dist should = " << dist << std::endl;
+    double t    = rgba[2] == 0 ? 1.0 : rgba[2];
+    double dist = rgba[2] > 0 ? rgba[2] * (far_plane - real_near_plane) + real_near_plane : far_plane;
+    //std::cerr << "blue channel = " << t << std::endl;
+    //std::cerr << "dist = " << dist << std::endl;
 
     glm::dvec3 position;
-
-    gluUnProject(x, y, rgba[2], (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+    gluUnProject(x, y, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
     position = glm::dvec3(0.0, CAMERA_Y, CAMERA_Z) - position;
 
