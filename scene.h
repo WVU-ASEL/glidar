@@ -39,8 +39,9 @@
 
 const float ASPECT_RATIO = 1.0;
 const float CAMERA_Y     = 0.05;
-const float CAMERA_Z     = 400.0;
+const float CAMERA_Z     = 1000.0;
 const unsigned int BOX_HALF_DIAGONAL = 174;
+const float MIN_NEAR_PLANE = 0.01;
 
 const double RADIANS_PER_DEGREE = M_PI / 180.0;
 
@@ -48,7 +49,11 @@ const double RADIANS_PER_DEGREE = M_PI / 180.0;
 class Scene {
 public:
   Scene(const std::string& filename, float scale_factor_ = 1.0)
-  : scale_factor(scale_factor_), camera_z(CAMERA_Z), near_plane(1.0), far_plane(camera_z+BOX_HALF_DIAGONAL)
+  : scale_factor(scale_factor_),
+    camera_z(CAMERA_Z),
+    ideal_near_plane(camera_z-BOX_HALF_DIAGONAL),
+    real_near_plane(std::max(MIN_NEAR_PLANE, ideal_near_plane)),
+    far_plane(camera_z+BOX_HALF_DIAGONAL)
   {
     mesh.load_mesh(filename);
 
@@ -60,13 +65,14 @@ public:
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << near_plane << ", " << far_plane << std::endl;
+    std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
 
     camera_z -= z;
-    //near_plane -= z;
+    ideal_near_plane -= z;
+    real_near_plane = std::max(MIN_NEAR_PLANE, ideal_near_plane);
     far_plane -= z;
 
-    gluPerspective(20.0f, ASPECT_RATIO, near_plane, far_plane);
+    gluPerspective(20.0f, ASPECT_RATIO, real_near_plane, far_plane);
     glRotatef(std::atan(CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
     glTranslatef(0.0, CAMERA_Y, -camera_z); // move it 5cm off from the emitter.
 
@@ -78,7 +84,7 @@ public:
     std::cerr << "camera_z is now " << camera_z << std::endl;
     glUniform1fv(camera_z_id, 1, &camera_z);
     glUniform1fv(far_plane_id, 1, &far_plane);
-    glUniform1fv(near_plane_id, 1, &near_plane);
+    glUniform1fv(near_plane_id, 1, &real_near_plane);
   }
 
   void rotate_model(Shader* shader_program, float x, float y, float z) {
@@ -103,10 +109,10 @@ public:
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << near_plane << ", " << far_plane << std::endl;
+    std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
-    gluPerspective(20.0f, ASPECT_RATIO, near_plane, far_plane);
+    gluPerspective(20.0f, ASPECT_RATIO, real_near_plane, far_plane);
     glRotatef(std::atan(CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
     glTranslatef(0.0, CAMERA_Y, -camera_z); // move it 5cm off from the emitter.
 
@@ -119,7 +125,7 @@ public:
     std::cerr << "camera_z is now " << camera_z << std::endl;
     glUniform1fv(camera_z_id, 1, &camera_z);
     glUniform1fv(far_plane_id, 1, &far_plane);
-    glUniform1fv(near_plane_id, 1, &near_plane);
+    glUniform1fv(near_plane_id, 1, &real_near_plane);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -274,7 +280,8 @@ private:
   Mesh mesh;
   float scale_factor;
   GLfloat camera_z;
-  GLfloat near_plane;
+  GLfloat ideal_near_plane;
+  GLfloat real_near_plane;
   GLfloat far_plane;
 };
 
