@@ -30,12 +30,7 @@
  */
 
 #include <iostream>
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/projection.hpp>
+
 #include <Magick++.h>
 
 #include "scene.h"
@@ -152,31 +147,12 @@ int main(int argc, char** argv) {
       // First, re-render without the box, or it'll show up in our point cloud.
       scene.render(&shader_program, rx, ry, rz, false);
 
-      glm::ivec4 viewport;
-      glm::dmat4 model_view_matrix, projection_matrix;
-      glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
-      glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
-      glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
+      glm::dvec3 position = scene.unproject(height, mouse_x, mouse_y);
 
-      // Get near and far plane points
-      glm::dvec3 near, far;
-      gluUnProject(mouse_x, mouse_y, 0.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(near[0]), &(near[1]), &(near[2]));
-      gluUnProject(mouse_x, mouse_y, 1.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(far[0]), &(far[1]), &(far[2]));
-      glm::dvec3 relative_far = near - far;
-      glm::vec4 rgba;
-      glReadPixels(mouse_x, height - mouse_y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-
-      double t = rgba[2];
-      std::cerr << "\tt = " << t << std::endl;
-
-      std::cerr << "\tnear plane: " << near[0] << '\t' << near[1] << '\t' << near[2] << std::endl;
-      std::cerr << "\tfar plane : " << far[0]  << '\t' << far[1]  << '\t' << far[2]  << std::endl;
-      std::cerr << "\ttrans far : " << relative_far[0] << '\t' << relative_far[1]  << '\t' << relative_far[2]  << std::endl;
-      std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
-
-      glm::dvec3 position = relative_far * t;
-      position[0] = -position[0]; // invert x
-
+      std::cerr << "\tcamera z  : " << scene.get_camera_z() << std::endl;
+      std::cerr << "\tnear z    : " << scene.get_near_plane() << std::endl;
+      std::cerr << "\tfar z     : " << scene.get_far_plane() << std::endl;
+      //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
       std::cerr << "\tcoords    : " << position[0] << '\t' << position[1] << '\t' << position[2] << std::endl;
     }
 

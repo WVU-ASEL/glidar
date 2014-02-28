@@ -31,7 +31,12 @@
 
 #ifndef SCENE_H
 # define SCENE_H
-
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/projection.hpp>
 #include <cmath>
 #include "mesh.h"
 
@@ -129,6 +134,47 @@ public:
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+  }
+
+
+  /*
+   * Given some x,y coordinates in the window, and the blue channel of those coordinates, what are the world coordinates
+   * of that surface?
+   */
+  glm::dvec3 unproject(const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
+    glm::vec4 rgba;
+    return unproject(rgba, model_view_matrix, projection_matrix, viewport, height, x, y);
+  }
+
+
+  glm::dvec3 unproject(glm::vec4& rgba, const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
+    glReadPixels(x, height - y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
+
+    double dist = rgba[2] * (far_plane - real_near_plane) + real_near_plane;// * real_near_plane / far_plane;
+    //std::cerr << "blue channel = t = " << rgba[2] << std::endl;
+    //std::cerr << "dist should = " << dist << std::endl;
+
+    glm::dvec3 position;
+
+    gluUnProject(x, y, rgba[2], (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+
+    position = glm::dvec3(0.0, CAMERA_Y, CAMERA_Z) - position;
+
+    return position;
+  }
+
+  /*
+   * See unproject above; this one is also responsible for retrieving the model view and projection matrices as well as the viewport.
+   */
+  glm::dvec3 unproject(size_t height, double x, double y) const {
+    glm::ivec4 viewport;
+    glm::dmat4 model_view_matrix, projection_matrix;
+
+    glGetDoublev( GL_MODELVIEW_MATRIX,   (double*)&model_view_matrix);
+    glGetDoublev( GL_PROJECTION_MATRIX,  (double*)&projection_matrix);
+    glGetIntegerv(GL_VIEWPORT,           (int*)&viewport);
+
+    return unproject(model_view_matrix, projection_matrix, viewport, height, x, y);
   }
 
 
@@ -254,17 +300,10 @@ public:
     for (size_t i = 0; i < height; ++i) {
       for (size_t j = 0; j < width; ++j) {
 
-        glm::dvec3 near, far;
+        // unproject writes into rgba
         glm::vec4 rgba;
-
-        gluUnProject(i, j, 0.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(near[0]), &(near[1]), &(near[2]));
-        gluUnProject(i, j, 1.0, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(far[0]),  &(far[1]),  &(far[2]));
-        glReadPixels(i, height - j, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-        glm::dvec3 relative_far = near - far;
-
+        glm::dvec3 position = unproject(rgba, model_view_matrix, projection_matrix, viewport, height, i, j);
         //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
-        glm::dvec3 position = relative_far * (double)(rgba[2]);
-        if (position[0] != 0) position[0] = -position[0];
 
         out << position[0] << ' ' << position[1] << ' ' << position[2] << ' ' << rgba[0] << '\n';
       }
@@ -275,7 +314,9 @@ public:
     std::cerr << "Saved '" << filename << "'" << std::endl;
   }
 
-
+  float get_camera_z() const { return camera_z; }
+  float get_near_plane() const { return real_near_plane; }
+  float get_far_plane() const { return far_plane; }
 private:
   Mesh mesh;
   float scale_factor;

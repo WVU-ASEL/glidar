@@ -13,6 +13,7 @@ varying vec3 ec_pos;
 
 uniform float camera_z;
 uniform float far_plane;
+uniform float near_plane;
 
 uniform sampler2D texture_color;
 
@@ -22,8 +23,12 @@ uniform sampler2D texture_color;
 //  return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
 //}
 
-float rand(vec2 co) {
+float rand_positive(vec2 co) {
   return noise1(co) * 0.5 + 0.5;
+}
+
+float rand_0_mean(vec2 co) {
+  return noise1(co*2);
 }
 
 void main() {
@@ -33,7 +38,7 @@ void main() {
 
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
-  float dist = length(light_dir0); // - rand(ec_pos.xy) * 10;// - rand(ec_pos.xy) * length(light_dir0) * 0.95;
+  float dist = length(light_dir0);
 
   float n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
 
@@ -53,7 +58,7 @@ void main() {
       float n_dot_hv = max(dot(normal0,half_vector), 0.0);
       color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
-      color.b = dist / far_plane; //(dist * (1.0 - 0.05*rand(ec_pos.xy))) / far_plane;
+      color.b = (dist - near_plane) / (far_plane - near_plane);
       color.a = 1.0;
       color.g = 0;
     } else {
