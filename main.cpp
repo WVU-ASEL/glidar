@@ -56,8 +56,8 @@ int main(int argc, char** argv) {
   unsigned int width(argc > 6 ? atoi(argv[6]) : 256);
   unsigned int height(argc > 7 ? atoi(argv[7]) : 256);
 
-  std::cerr << "Loading model " << model_filename << std::endl;
-  std::cerr << "Scaling model by " << model_scale_factor << std::endl;
+  std::cerr << "Loading model "      << model_filename << std::endl;
+  std::cerr << "Scaling model by "   << model_scale_factor << std::endl;
 
   Magick::InitializeMagick(*argv);
 

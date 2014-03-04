@@ -122,6 +122,14 @@ public:
       shader_program->unbind();
     }
 
+  /*
+   * Get the centroid of the object, an average of the positions of all vertices.
+   *
+   */
+  glm::vec3 centroid() const {
+    return centroid_;
+  }
+
 private:
     bool init_from_scene(const aiScene* scene, const std::string& filename) {
       entries.resize(scene->mNumMeshes);
@@ -137,6 +145,7 @@ private:
     }
 
     void init_mesh(unsigned int index, const aiMesh* mesh) {
+
       entries[index].material_index = mesh->mMaterialIndex;
 
       std::vector<Vertex> vertices;
@@ -169,13 +178,17 @@ private:
         if (pos->z < min_extremities.z)       min_extremities.z = pos->z;
         else if (pos->z > max_extremities.z)  max_extremities.z = pos->z;
 
-
         Vertex v(glm::vec3(pos->x, pos->y, pos->z),
             glm::vec2(texture_coord->x, texture_coord->y),
             glm::vec3(normal->x, normal->y, normal->z));
 
+        // Accumulate the centroid_ of the object.
+        centroid_ += v.pos;
+
         vertices.push_back(v);
       }
+
+      centroid_ /= mesh->mNumVertices;
 
       // Add vertices for each face
       for (unsigned int i = 0; i < mesh->mNumFaces; ++i) {
@@ -292,7 +305,7 @@ private:
 
     std::vector<MeshEntry> entries;
     std::vector<Texture*> textures;
-    glm::vec3 min_extremities, max_extremities;
+    glm::vec3 min_extremities, max_extremities, centroid_;
 };
 
 
