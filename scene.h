@@ -80,8 +80,8 @@ public:
     far_plane -= z;
 
     gluPerspective(20.0f, ASPECT_RATIO, real_near_plane, far_plane);
-    glRotatef(std::atan(CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
-    glTranslatef(0.0, CAMERA_Y, -camera_z); // move it 5cm off from the emitter.
+    glTranslatef(0.0, 0.0, -camera_z);
+    glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
 
     glUseProgram(shader_program->id());
     GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
@@ -120,8 +120,8 @@ public:
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
     gluPerspective(20.0f, ASPECT_RATIO, real_near_plane, far_plane);
-    glRotatef(std::atan(CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
-    glTranslatef(0.0, CAMERA_Y, -camera_z); // move it 5cm off from the emitter.
+    glTranslatef(0.0, 0.0, -camera_z); // move it to 1000 m away.
+    glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
 
 
     glUseProgram(shader_program->id());
