@@ -9,3 +9,5 @@ __MACOSX/
 a.out
 *.o
 lidargl
+*.obj
+*.pcd

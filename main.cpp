@@ -53,8 +53,13 @@ int main(int argc, char** argv) {
   float model_rotate_x(argc > 3 ? atof(argv[3]) : 0.0);
   float model_rotate_y(argc > 4 ? atof(argv[4]) : 0.0);
   float model_rotate_z(argc > 5 ? atof(argv[5]) : 0.0);
-  unsigned int width(argc > 6 ? atoi(argv[6]) : 256);
-  unsigned int height(argc > 7 ? atoi(argv[7]) : 256);
+  float model_init_rotate_x(argc > 6 ? atof(argv[6]) : 0.0);
+  float model_init_rotate_y(argc > 7 ? atof(argv[7]) : 0.0);
+  float model_init_rotate_z(argc > 8 ? atof(argv[8]) : 0.0);
+  float camera_z(argc > 9 ? atof(argv[9]) : 1000.0);
+  unsigned int width(argc > 10 ? atoi(argv[10]) : 256);
+  unsigned int height(argc > 11 ? atoi(argv[11]) : 256);
+  std::string pcd_filename(argc > 12 ? argv[12] : "");
 
   std::cerr << "Loading model "      << model_filename << std::endl;
   std::cerr << "Scaling model by "   << model_scale_factor << std::endl;
@@ -91,7 +96,7 @@ int main(int argc, char** argv) {
   // Ensure we can capture the escape key being pressed below
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-  Scene scene(model_filename, model_scale_factor);
+  Scene scene(model_filename, model_scale_factor, camera_z);
 
 
   double last_time = 0,
@@ -103,10 +108,15 @@ int main(int argc, char** argv) {
 
   scene.setup(&shader_program);
 
-  float rx = 0.0, ry = 0.0, rz = 0.0;
+  float rx = model_init_rotate_x,
+        ry = model_init_rotate_y,
+        rz = model_init_rotate_z;
 
   bool mouse_button_pressed = false;
   bool s_key_pressed = false;
+
+  bool save_and_quit = false;
+  bool saved_now_quit= false;
 
   do {
 
@@ -124,12 +134,17 @@ int main(int argc, char** argv) {
     }
 
     // Write a PCD file if the user presses the 's' key.
-    if (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE) {
+    if (save_and_quit || (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)) {
+
       // First, re-render without the box, or it'll show up in our point cloud.
       scene.render(&shader_program, rx, ry, rz, false);
 
-      scene.save_point_cloud("buffer.pcd", width, height);
+      scene.save_point_cloud(save_and_quit ? pcd_filename : "buffer.pcd",
+                             width,
+                             height);
       s_key_pressed = false;
+
+      if (save_and_quit) saved_now_quit = true;
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
@@ -170,7 +185,9 @@ int main(int argc, char** argv) {
     last_time = current_time;
     current_time = glfwGetTime();
 
-  } while( glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
+    save_and_quit = pcd_filename.size() > 0;
+
+  } while (!saved_now_quit && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
 
   glfwTerminate();
 }

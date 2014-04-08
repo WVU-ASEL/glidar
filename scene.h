@@ -53,9 +53,9 @@ const double RADIANS_PER_DEGREE = M_PI / 180.0;
 
 class Scene {
 public:
-  Scene(const std::string& filename, float scale_factor_ = 1.0)
+  Scene(const std::string& filename, float scale_factor_ = 1.0, float camera_z_ = CAMERA_Z)
   : scale_factor(scale_factor_),
-    camera_z(CAMERA_Z),
+    camera_z(camera_z_),
     ideal_near_plane(camera_z-BOX_HALF_DIAGONAL),
     real_near_plane(std::max(MIN_NEAR_PLANE, ideal_near_plane)),
     far_plane(camera_z+BOX_HALF_DIAGONAL)
