@@ -139,9 +139,11 @@ int main(int argc, char** argv) {
       // First, re-render without the box, or it'll show up in our point cloud.
       scene.render(&shader_program, rx, ry, rz, false);
 
-      scene.save_point_cloud(save_and_quit ? pcd_filename : "buffer.pcd",
+      scene.save_point_cloud(save_and_quit ? pcd_filename : "buffer",
                              width,
                              height);
+      scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
+                                         rx, ry, rz);
       s_key_pressed = false;
 
       if (save_and_quit) saved_now_quit = true;

@@ -274,9 +274,24 @@ public:
 
 
   /*
+   * Write the translation and rotation information to a file.
+   */
+  void save_transformation_metadata(const std::string& basename, float rx, float ry, float rz) {
+    std::string filename = basename + ".transform";
+    std::ofstream out(filename);
+
+    out << get_camera_z() << '\n';
+    out << rx << '\t' << ry << '\t' << rz << std::endl;
+
+    out.close();
+  }
+
+
+  /*
    * Write the current color buffer as a PCD (point cloud file).
    */
-  void save_point_cloud(const std::string& filename, unsigned int width, unsigned int height) {
+  void save_point_cloud(const std::string& basename, unsigned int width, unsigned int height) {
+    std::string filename = basename + ".pcd";
 
     std::cerr << "Saving point cloud..." << std::endl;
 
@@ -287,7 +302,7 @@ public:
     glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
     glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
 
-    std::ofstream out(filename.c_str());
+    std::ofstream out(filename);
 
     // Print PCD header
     out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
