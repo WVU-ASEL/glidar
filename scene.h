@@ -44,7 +44,6 @@
 
 const float ASPECT_RATIO = 1.0;
 const float CAMERA_Y     = 0.05;
-const float CAMERA_Z     = 1000.0;
 const unsigned int BOX_HALF_DIAGONAL = 174;
 const float MIN_NEAR_PLANE = 0.01;
 
@@ -53,7 +52,7 @@ const double RADIANS_PER_DEGREE = M_PI / 180.0;
 
 class Scene {
 public:
-  Scene(const std::string& filename, float scale_factor_ = 1.0, float camera_z_ = CAMERA_Z)
+  Scene(const std::string& filename, float scale_factor_, float camera_z_)
   : scale_factor(scale_factor_),
     camera_z(camera_z_),
     ideal_near_plane(camera_z-BOX_HALF_DIAGONAL),
@@ -159,7 +158,7 @@ public:
     glm::dvec3 position;
     gluUnProject(x, y, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
-    position = glm::dvec3(0.0, CAMERA_Y, CAMERA_Z) - position;
+    position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
 
     return position;
   }
