@@ -65,6 +65,7 @@ public:
     std::cerr << "Object dimensions as modeled: " << dimensions.x << '\t' << dimensions.y << '\t' << dimensions.z << std::endl;
     glm::vec3 centroid = mesh.centroid();
     std::cerr << "Center of object as modeled: " << centroid.x << '\t' << centroid.y << '\t' << centroid.z << std::endl;
+    std::cerr << "NOTE: Object will be re-centered prior to rendering." << std::endl;
   }
 
   void move_camera(Shader* shader_program, float z) {
@@ -97,7 +98,7 @@ public:
     glMatrixMode(GL_MODELVIEW);
     glRotatef(x, 1.0, 0.0, 0.0);
     glRotatef(y, 0.0, 1.0, 0.0);
-    glRotatef(z, 0.0, 1.0, 0.0);
+    glRotatef(z, 0.0, 0.0, 1.0);
 
     // Scale only the mesh.
     glScalef(scale_factor, scale_factor, scale_factor);
@@ -256,11 +257,14 @@ public:
     glLightfv(GL_LIGHT0, GL_POSITION, light_position);
     glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 10.0);
 
-    // Scale only the mesh.
+    // Translate and scale only the mesh.
+    glm::vec3 centroid(mesh.centroid());
     glScalef(scale_factor, scale_factor, scale_factor);
     glRotatef(x, 1.0, 0.0, 0.0);
     glRotatef(y, 0.0, 1.0, 0.0);
     glRotatef(z, 0.0, 0.0, 1.0);
+
+    glTranslatef(-centroid.x, -centroid.y, -centroid.z);
     // Render the mesh.
     mesh.render(shader_program);
 
