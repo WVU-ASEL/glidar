@@ -68,7 +68,7 @@ public:
     std::cerr << "NOTE: Object will be re-centered prior to rendering." << std::endl;
   }
 
-  void move_camera(Shader* shader_program, float z) {
+  void move_camera(Shader* shader_program, float fov, float z) {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
@@ -79,7 +79,7 @@ public:
     real_near_plane = std::max(MIN_NEAR_PLANE, ideal_near_plane);
     far_plane -= z;
 
-    gluPerspective(20.0f, ASPECT_RATIO, real_near_plane, far_plane);
+    gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
     glTranslatef(0.0, 0.0, -camera_z);
     glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
 
@@ -108,7 +108,7 @@ public:
   }
 
 
-  void setup(Shader* shader_program) {
+  void setup(Shader* shader_program, float fov) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glPolygonMode( GL_FRONT, GL_FILL );
@@ -119,7 +119,7 @@ public:
     std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
     std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
-    gluPerspective(20.0f, ASPECT_RATIO, real_near_plane, far_plane);
+    gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
     glTranslatef(0.0, 0.0, -camera_z); // move it to 1000 m away.
     glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
 

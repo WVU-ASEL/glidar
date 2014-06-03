@@ -59,7 +59,8 @@ int main(int argc, char** argv) {
   float camera_z(argc > 9 ? atof(argv[9]) : 1000.0);
   unsigned int width(argc > 10 ? atoi(argv[10]) : 256);
   unsigned int height(argc > 11 ? atoi(argv[11]) : 256);
-  std::string pcd_filename(argc > 12 ? argv[12] : "");
+  float fov(argc > 12 ? atof(argv[12]) : 20.0f);
+  std::string pcd_filename(argc > 13 ? argv[13] : "");
 
   std::cerr << "Loading model "      << model_filename << std::endl;
   std::cerr << "Scaling model by "   << model_scale_factor << std::endl;
@@ -106,7 +107,7 @@ int main(int argc, char** argv) {
   //Shader shader_program("spotv.glsl", "spotf.glsl");
   Shader shader_program("lidarv.glsl", "lidarf.glsl");
 
-  scene.setup(&shader_program);
+  scene.setup(&shader_program, fov);
 
   float rx = model_init_rotate_x,
         ry = model_init_rotate_y,
@@ -121,12 +122,12 @@ int main(int argc, char** argv) {
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-      scene.move_camera(&shader_program, delta_time * SPEED);
+      scene.move_camera(&shader_program, fov, delta_time * SPEED);
     }
 
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-      scene.move_camera(&shader_program, delta_time * -SPEED);
+      scene.move_camera(&shader_program, fov, delta_time * -SPEED);
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
