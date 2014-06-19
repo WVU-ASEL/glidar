@@ -151,7 +151,8 @@ public:
 
   glm::dvec3 unproject(glm::vec4& rgba, const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
     glReadPixels(x, height - y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-    double t    = rgba[2] == 0 ? 1.0 : rgba[2];
+    int   gb    = (rgba[1] * 65536) + (rgba[2] * 256);
+    double t    = gb == 0 ? 1.0 : gb / 65536.0;
     //double dist = rgba[2] > 0 ? rgba[2] * (far_plane - real_near_plane) + real_near_plane : far_plane;
     //std::cerr << "blue channel = " << t << std::endl;
     //std::cerr << "dist = " << dist << std::endl;

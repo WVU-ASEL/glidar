@@ -58,9 +58,10 @@ void main() {
       float n_dot_hv = max(dot(normal0,half_vector), 0.0);
       color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
-      color.b = (dist - near_plane) / (far_plane - near_plane);
+      float dist_ratio = 65536.0f * (dist - near_plane) / (far_plane - near_plane);
+      color.g = floor(dist_ratio / 256.0f) / 256.0;
+      color.b = floor(mod(dist_ratio, 256.0f)) / 256.0;
       color.a = 1.0;
-      color.g = 0;
     } else {
       color = vec4(0.0,0.0,0.0,1.0);
     }
