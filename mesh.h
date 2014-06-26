@@ -70,7 +70,7 @@ public:
     bool ret = false;
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_FixInfacingNormals | aiProcess_JoinIdenticalVertices); //| aiProcess_FixInfacingNormals);
+    const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_JoinIdenticalVertices); //| aiProcess_FixInfacingNormals);
 
     if (scene)    ret = init_from_scene(scene, filename);
     else std::cerr << "Error parsing '" << filename << "': " << importer.GetErrorString() << std::endl;
