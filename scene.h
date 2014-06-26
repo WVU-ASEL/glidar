@@ -317,6 +317,8 @@ public:
     out << "POINTS " << width*height << std::endl;
     out << "DATA ASCII" << std::endl;
 
+    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
+    // forever to run.
     for (size_t i = 0; i < height; ++i) {
       for (size_t j = 0; j < width; ++j) {
 

@@ -34,6 +34,7 @@
 #include <Magick++.h>
 
 #include "scene.h"
+#include "mesh.h"
 
 using namespace glm;
 
@@ -41,7 +42,6 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-const GLdouble FOV = 20.0;
 const float SPEED = 12.0f;
 
 
