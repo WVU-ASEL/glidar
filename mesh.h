@@ -28,6 +28,7 @@
 #include <assimp/postprocess.h>
 
 #define INVALID_OGL_VALUE 0xFFFFFFFF
+//#define AI_CONFIG_PP_RVC_FLAGS  aiComponent_NORMALS
 
 #include "texture.h"
 
@@ -70,7 +71,7 @@ public:
     bool ret = false;
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_JoinIdenticalVertices); //| aiProcess_FixInfacingNormals);
+    const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate );
 
     if (scene)    ret = init_from_scene(scene, filename);
     else std::cerr << "Error parsing '" << filename << "': " << importer.GetErrorString() << std::endl;
@@ -131,17 +132,19 @@ public:
   }
 
 private:
-  void init_mesh(unsigned int index, const aiMesh* mesh);
+  void init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index);
   bool init_materials(const aiScene* scene, const std::string& filename);
 
   bool init_from_scene(const aiScene* scene, const std::string& filename) {
     entries.resize(scene->mNumMeshes);
     textures.resize(scene->mNumMaterials);
 
+    std::cout << "Reading " << entries.size() << " meshes" << std::endl;
+
     // Initialize the meshes in the scene one by one
-    for (unsigned int i = 0; i < entries.size(); ++i) {
+    for (size_t i = 0; i < entries.size(); ++i) {
       const aiMesh* mesh = scene->mMeshes[i];
-      init_mesh(i, mesh);
+      init_mesh(scene, mesh, i);
     }
 
     return init_materials(scene, filename);
