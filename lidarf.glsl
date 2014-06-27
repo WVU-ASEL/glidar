@@ -15,7 +15,8 @@ uniform float camera_z;
 uniform float far_plane;
 uniform float near_plane;
 
-uniform sampler2D texture_color;
+uniform sampler2D diffuse_texture_color;
+uniform sampler2D specular_texture_color;
 
 // Random number generator without any real testing done.
 // Comes from: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
@@ -33,7 +34,7 @@ float rand_0_mean(vec2 co) {
 
 void main() {
   const float GLOBAL_AMBIENT = 0.2;
-  vec4 color = vec4((gl_FrontMaterial.emission * texture2D(texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
+  vec4 color = vec4((gl_FrontMaterial.emission * texture2D(diffuse_texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
   float spot_effect;
 
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;

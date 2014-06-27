@@ -104,7 +104,7 @@ public:
 
 
       if (material_index < textures.size() && textures[material_index]) {
-        textures[material_index]->bind(GL_TEXTURE0, shader_program);
+        textures[material_index]->bind(shader_program);
       }
 
       //glColor4f(1.0, 1.0, 1.0, 1.0);

@@ -171,41 +171,43 @@ bool Mesh::init_materials(const aiScene* scene, const std::string& filename) {
     std::cerr << "Scene has textures!" << std::endl;
 
   for (size_t i = 0; i < scene->mNumMaterials; ++i) {
+    textures[i] = NULL;
     std::cerr << "Loading material " << i+1 << " of " << scene->mNumMaterials << std::endl;
     const aiMaterial* material = scene->mMaterials[i];
 
-    //for (size_t i = 0; i <= static_cast<size_t>(aiTextureType_UNKNOWN); ++i) {
-    //  std::cerr << "texture count for " << i << " is " << material->GetTextureCount(static_cast<aiTextureType>(i)) << std::endl;
-    //}
 
-    textures[i] = NULL;
+    std::vector<std::string> texture_filenames(2);
+    texture_filenames[0] = "./white.png";
+    texture_filenames[1] = "./white.png";
+
     if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
-
-      std::cerr << "Texture count = " << material->GetTextureCount(aiTextureType_DIFFUSE) << std::endl;
+      std::cerr << "Diffuse texture count = " << material->GetTextureCount(aiTextureType_DIFFUSE) << std::endl;
       aiString path;
+
       if (material->GetTexture(aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
         std::string full_path = dir + "/" + path.data;
-        std::cerr << "Registering texture from " << full_path.c_str() << std::endl;
-        textures[i] = new Texture(GL_TEXTURE_2D, full_path.c_str());
+        std::cerr << "Registering diffuse texture from " << full_path.c_str() << std::endl;
 
-        if (!textures[i]->load()) {
-          std::cerr << "Error loading texture '" << full_path << "'" << std::endl;
-          delete textures[i];
-          textures[i] = NULL;
-          ret = false;
-        }
+        texture_filenames[0] = std::string(full_path.c_str());
       }
     }
 
-    // This code handles most of our models --- which have no textures:
-    if (!textures[i]) {
-      glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-      textures[i] = new Texture(GL_TEXTURE_2D, "./white.png");
-      ret = textures[i]->load();
+
+    if (material->GetTextureCount(aiTextureType_SPECULAR) > 0) {
+      std::cerr << "Specular texture count = " << material->GetTextureCount(aiTextureType_DIFFUSE) << std::endl;
+      aiString path;
+
+      if (material->GetTexture(aiTextureType_SPECULAR, 0, &path, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
+        std::string full_path = dir + "/" + path.data;
+        std::cerr << "Registering specular texture from " << full_path.c_str() << std::endl;
+
+        texture_filenames[1] = std::string(full_path.c_str());
+
+      }
     }
+
+    textures[i] = new Texture(texture_filenames);
+    textures[i]->load();
   }
 
   return ret;

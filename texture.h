@@ -29,50 +29,70 @@
 class Texture
 {
 public:
-    Texture(GLenum texture_target_, const std::string& filename_)
-    : filename(filename_),
-      texture_target(texture_target_),
-      image(NULL)
-    { }
+  Texture(const std::vector<std::string>& filenames_)
+  : filenames(filenames_),
+    texture_object_handles(new GLuint[filenames_.size()]),
+    images(filenames_.size(), NULL),
+    blobs(filenames_.size())
+  { }
 
-    bool load() {
+  bool load() {
+    for (size_t i = 0; i < filenames.size(); ++i) {
       try {
-        std::cerr << "Attempting to load texture from " << filename << std::endl;
-        image = new Magick::Image(filename);
-        image->write(&blob, "RGBA");
+        std::cerr << "Attempting to load texture from " << filenames[i] << std::endl;
+        images[i] = new Magick::Image(filenames[i]);
+        images[i]->write(&(blobs[i]), "RGBA");
       }
-      catch (Magick::Error& error) {
-        std::cout << "Error loading texture '" << filename << "': " << error.what() << std::endl;
+      catch (Magick::Error &error) {
+        std::cout << "Error loading texture '" << filenames[i] << "': " << error.what() << std::endl;
         return false;
       }
-
-      glGenTextures(1, &texture_object);
-      glBindTexture(texture_target, texture_object);
-      glTexImage2D(texture_target, 0, GL_RGB, image->columns(), image->rows(), 0, GL_RGBA, GL_UNSIGNED_BYTE, blob.data());
-      glTexParameterf(texture_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameterf(texture_target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-      return true;
     }
 
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  void bind(GLenum texture_unit, Shader* shader_program = NULL) {
-      glActiveTexture(texture_unit);
+    glGenTextures(filenames.size(), texture_object_handles);
 
-      if (shader_program) {
-        GLint texture_location = glGetUniformLocation(shader_program->id(), "texture_color");
-        glUniform1i(texture_location, 0);
+    for (size_t i = 0; i < filenames.size(); ++i) {
+      glActiveTexture(GL_TEXTURE0 + i); // next few calls apply to this texture
+      glBindTexture(GL_TEXTURE_2D, texture_object_handles[i]);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, images[i]->columns(), images[i]->rows(), 0, GL_RGBA, GL_UNSIGNED_BYTE, blobs[i].data());
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+
+    return true;
+  }
+
+
+  void bind(Shader* shader_program = NULL) {
+    const char* UNIFORM_NAMES[] = {"diffuse_texture_color",
+        "specular_texture_color"};
+
+    if (shader_program) {
+      for (size_t i = 0; i < filenames.size(); ++i) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        GLint location = glGetUniformLocation(shader_program->id(), UNIFORM_NAMES[i]);
+        glUniform1i(location, i);
+
+        glBindTexture(GL_TEXTURE_2D, texture_object_handles[i]);
       }
-
-      glBindTexture(texture_target, texture_object);
+    } else { // not 100% sure this will work, but it probably doesn't matter.
+      for (size_t i = 0; i < filenames.size(); ++i) {
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D, texture_object_handles[i]);
+      }
     }
+  }
 
 private:
-    std::string filename;
-    GLenum texture_target;
-    GLuint texture_object;
-    Magick::Image* image;
-    Magick::Blob    blob;
+  std::vector<std::string> filenames;
+  GLuint* texture_object_handles;
+  std::vector<Magick::Image*> images;
+  std::vector<Magick::Blob>   blobs;
 };
 
 
