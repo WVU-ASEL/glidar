@@ -49,7 +49,7 @@ const float SPEED = 12.0f;
 int main(int argc, char** argv) {
 
   std::string model_filename(argc > 1 ? argv[1] : "test.obj");
-  float model_scale_factor(argc > 2 ? atof(argv[2]) : 100.0);
+  float model_scale_factor(argc > 2 ? atof(argv[2]) : 1.0);
   float model_rotate_x(argc > 3 ? atof(argv[3]) : 0.0);
   float model_rotate_y(argc > 4 ? atof(argv[4]) : 0.0);
   float model_rotate_z(argc > 5 ? atof(argv[5]) : 0.0);
