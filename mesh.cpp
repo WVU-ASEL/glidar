@@ -212,6 +212,74 @@ bool Mesh::init_materials(const aiScene* scene, const std::string& filename) {
       }
     }
 
+
+    if (material->GetTextureCount(aiTextureType_AMBIENT) > 0) {
+      std::cerr << "Ambient texture count = " << material->GetTextureCount(aiTextureType_AMBIENT) << std::endl;
+      std::cerr << "WARNING: Ambient textures are not currently included in the simulation." << std::endl;
+      //aiString path;
+
+      /*if (material->GetTexture(aiTextureType_AMBIENT, 0, &path, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
+        std::string full_path = dir + "/" + path.data;
+        std::cerr << "Registering ambient texture from " << full_path.c_str() << std::endl;
+
+        texture_filenames[0] = std::string(full_path.c_str());
+      } */
+    }
+
+    if (material->GetTextureCount(aiTextureType_EMISSIVE) > 0) {
+      std::cerr << "Emissive texture count = " << material->GetTextureCount(aiTextureType_EMISSIVE) << std::endl;
+      std::cerr << "WARNING: Emissive textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_HEIGHT) > 0) {
+      std::cerr << "Height texture count = " << material->GetTextureCount(aiTextureType_HEIGHT) << std::endl;
+      std::cerr << "WARNING: Height textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_NORMALS) > 0) {
+      std::cerr << "Normals texture count = " << material->GetTextureCount(aiTextureType_NORMALS) << std::endl;
+      std::cerr << "WARNING: Normals textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_SHININESS) > 0) {
+      std::cerr << "Shininess texture count = " << material->GetTextureCount(aiTextureType_SHININESS) << std::endl;
+      std::cerr << "WARNING: Shininess textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_OPACITY) > 0) {
+      std::cerr << "Opacity texture count = " << material->GetTextureCount(aiTextureType_OPACITY) << std::endl;
+      std::cerr << "WARNING: Shininess textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_DISPLACEMENT) > 0) {
+      std::cerr << "Displacement texture count = " << material->GetTextureCount(aiTextureType_DISPLACEMENT) << std::endl;
+      std::cerr << "WARNING: Displacement textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_LIGHTMAP) > 0) {
+      std::cerr << "Lightmap texture count = " << material->GetTextureCount(aiTextureType_LIGHTMAP) << std::endl;
+      std::cerr << "WARNING: Lightmap textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_REFLECTION) > 0) {
+      std::cerr << "Reflection texture count = " << material->GetTextureCount(aiTextureType_REFLECTION) << std::endl;
+      std::cerr << "WARNING: Reflection textures are not currently included in the simulation." << std::endl;
+    }
+
+
+    if (material->GetTextureCount(aiTextureType_UNKNOWN) > 0) {
+      std::cerr << "Unknown texture count = " << material->GetTextureCount(aiTextureType_UNKNOWN) << std::endl;
+      std::cerr << "WARNING: Unknown textures are not currently included in the simulation." << std::endl;
+    }
+
+
     textures[i] = new Texture(texture_filenames);
     textures[i]->load();
   }
