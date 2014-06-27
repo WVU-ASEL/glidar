@@ -42,7 +42,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 
-const float SPEED = 12.0f;
+const float SPEED = 36.0f;
 
 
 // Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp

@@ -1,5 +1,6 @@
 #include "mesh.h"
 
+
 void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
 
   std::cout << "Loading mesh named '" << mesh->mName.C_Str() << "'" << std::endl;
@@ -84,7 +85,8 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
 
     // Add each updated vertex and calculate its extremities.
     for (size_t i = 0; i < mesh->mNumVertices; ++i) {
-      const aiVector3D *texture_coord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][i]) : &zero_3d;
+      const aiVector3D *diffuse_texture_coord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][i]) : &zero_3d;
+      const aiVector3D *specular_texture_coord = mesh->HasTextureCoords(1) ? &(mesh->mTextureCoords[1][i]) : &zero_3d;
 
       // Find the extremities of this mesh so we can get a measurement for the object in object units.
       if (final_pos[i].x < min_extremities.x) min_extremities.x = final_pos[i].x;
@@ -98,7 +100,8 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
 
 
       Vertex vertex(glm::vec3(final_pos[i].x, final_pos[i].y, final_pos[i].z),
-          glm::vec2(texture_coord->x, texture_coord->y),
+          glm::vec2(diffuse_texture_coord->x, diffuse_texture_coord->y),
+          glm::vec2(specular_texture_coord->x, specular_texture_coord->y),
           glm::vec3(final_normal[i].x, final_normal[i].y, final_normal[i].z));
 
       std::cout << "Adding vertex " << i << ": " << final_pos[i].x << "," << final_pos[i].y << "," << final_pos[i].z;
@@ -115,7 +118,9 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
     for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
       const aiVector3D* pos    = &(mesh->mVertices[i]);
       const aiVector3D* normal = &(mesh->mNormals[i]);
-      const aiVector3D* texture_coord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][i]) : &zero_3d;
+
+      const aiVector3D* diffuse_texture_coord = mesh->HasTextureCoords(0) ? &(mesh->mTextureCoords[0][i]) : &zero_3d;
+      const aiVector3D* specular_texture_coord = mesh->HasTextureCoords(1) ? &(mesh->mTextureCoords[1][i]) : &zero_3d;
 
       // Find the extremities of this mesh so we can get a measurement for the object in object units.
       if (pos->x < min_extremities.x)       min_extremities.x = pos->x;
@@ -128,7 +133,8 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
       else if (pos->z > max_extremities.z)  max_extremities.z = pos->z;
 
       Vertex v(glm::vec3(pos->x, pos->y, pos->z),
-          glm::vec2(texture_coord->x, texture_coord->y),
+          glm::vec2(diffuse_texture_coord->x, diffuse_texture_coord->y),
+          glm::vec2(specular_texture_coord->x, specular_texture_coord->y),
           glm::vec3(normal->x, normal->y, normal->z));
 
       // Accumulate the centroid_ of the object.

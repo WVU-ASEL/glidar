@@ -1,7 +1,8 @@
 #version 120
 
 attribute vec3 position;
-attribute vec2 tex;
+attribute vec2 diffuse_tex;
+attribute vec2 specular_tex;
 attribute vec3 normal;
 
 //uniform float camera_z;
@@ -28,10 +29,13 @@ void main() {
 
   half_vector = gl_LightSource[0].halfVector.xyz;
 
-  gl_TexCoord[0].st = tex;
+  gl_TexCoord[0].st = diffuse_tex; //gl_MultiTexCoord0;
+  gl_TexCoord[1].st = specular_tex; //gl_MultiTexCoord1;
 
-  diffuse = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
-  ambient = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
+  //diffuse  = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
+  diffuse = vec4(1.0, 1.0, 1.0, 1.0);
+  //specular = gl_FrontMaterial.specular * gl_LightSource[0].specular;
+  ambient  = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
 
   n_dot_l = max(dot(normal0, light_dir), 0.0);
 

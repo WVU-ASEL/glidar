@@ -51,6 +51,7 @@ public:
   }
 
   void init(const char * vs_filename, const char * fs_filename) {
+    check_gl_error();
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -76,14 +77,18 @@ public:
     glAttachShader(shader_id, vertex_shader);
     glLinkProgram(shader_id);
     validate_program(shader_id);
-
+    check_gl_error();
   }
 
   void bind() {
+    check_gl_error();
     glUseProgram(shader_id);
+    check_gl_error();
   }
   void unbind() {
+    check_gl_error();
     glUseProgram(0);
+    check_gl_error();
   }
 
   GLuint id() { return shader_id; }

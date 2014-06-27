@@ -37,23 +37,29 @@
 struct Vertex
 {
   glm::vec3 pos;
-  glm::vec2 tex;
+  glm::vec2 diffuse_tex;
+  glm::vec2 specular_tex;
   glm::vec3 normal;
 
   Vertex() {}
 
-  Vertex(const glm::vec3& pos_, const glm::vec2& tex_, const glm::vec3& normal_)
-  {
-    pos    = pos_;
-    tex    = tex_;
-    normal = normal_;
-  }
+  Vertex(const glm::vec3& pos_, const glm::vec2& dtex_, const glm::vec2& stex_, const glm::vec3& normal_)
+  : pos(pos_), diffuse_tex(dtex_), specular_tex(stex_), normal(normal_)
+  {  }
 };
 
 
 // Ganked from: http://ogldev.atspace.co.uk/www/tutorial22/tutorial22.html
 class Mesh {
 public:
+  enum Attribute {
+    ATTR_POSITION,
+    ATTR_DIFFUSE_TEXCOORDS,
+    ATTR_SPECULAR_TEXCOORDS,
+    ATTR_NORMAL
+  };
+
+
   Mesh() : min_extremities(0.0f,0.0f,0.0f), max_extremities(0.0f,0.0f,0.0f) { }
 
   ~Mesh() { clear(); }
@@ -80,23 +86,40 @@ public:
   }
 
   void render(Shader* shader_program) {
+
     shader_program->bind();
 
-    GLuint position_loc = glGetAttribLocation(shader_program->id(), "position");
-    GLuint tex_loc      = glGetAttribLocation(shader_program->id(), "tex");
-    GLuint normal_loc   = glGetAttribLocation(shader_program->id(), "normal");
+    check_gl_error();
+
+/*    glBindAttribLocation(shader_program->id(), ATTR_POSITION, "position");
+    glBindAttribLocation(shader_program->id(), ATTR_DIFFUSE_TEXCOORDS, "diffuse_tex");
+    glBindAttribLocation(shader_program->id(), ATTR_SPECULAR_TEXCOORDS, "specular_tex");
+    glBindAttribLocation(shader_program->id(), ATTR_NORMAL, "normal");*/
+    GLuint position_loc     = glGetAttribLocation(shader_program->id(), "position");
+    GLuint diffuse_tex_loc  = glGetAttribLocation(shader_program->id(), "diffuse_tex");
+    GLuint specular_tex_loc = glGetAttribLocation(shader_program->id(), "specular_tex");
+    GLuint normal_loc       = glGetAttribLocation(shader_program->id(), "normal");
+
+    check_gl_error();
 
     glEnableVertexAttribArray(position_loc);
-    glEnableVertexAttribArray(tex_loc);
+    check_gl_error();
+    glEnableVertexAttribArray(diffuse_tex_loc);
+    check_gl_error();
+    glEnableVertexAttribArray(specular_tex_loc);
+    check_gl_error();
     glEnableVertexAttribArray(normal_loc);
+
+    check_gl_error();
 
     for (size_t i = 0; i < entries.size(); ++i) {
       glBindBuffer(GL_ARRAY_BUFFER, entries[i].vb);
 
       // I think this tells it where to look for the vertex information we've loaded.
-      glVertexAttribPointer(position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-      glVertexAttribPointer(tex_loc,      2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
-      glVertexAttribPointer(normal_loc,   3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20); // makes room for 5 floats
+      glVertexAttribPointer(position_loc,           3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+      glVertexAttribPointer(diffuse_tex_loc,  2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)12); // starts at 12 because 3 floats for position before 2 floats for normal
+      glVertexAttribPointer(specular_tex_loc, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)20);
+      glVertexAttribPointer(normal_loc,             3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const GLvoid*)28); // makes room for 7 floats
 
       glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entries[i].ib);
 
@@ -111,14 +134,14 @@ public:
       glDrawElements(GL_TRIANGLES, entries[i].num_indices, GL_UNSIGNED_INT, 0);
     }
 
-    GLenum error_check_value = glGetError();
-    if (error_check_value != GL_NO_ERROR) {
-      std::cerr << "Could not create a VBO: " << gluErrorString(error_check_value) << std::endl;
-    }
+    check_gl_error();
 
     glDisableVertexAttribArray(position_loc);
-    glDisableVertexAttribArray(tex_loc);
+    glDisableVertexAttribArray(diffuse_tex_loc);
+    glDisableVertexAttribArray(specular_tex_loc);
     glDisableVertexAttribArray(normal_loc);
+
+    check_gl_error();
 
     shader_program->unbind();
   }

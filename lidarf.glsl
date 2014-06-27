@@ -35,7 +35,7 @@ float rand_0_mean(vec2 co) {
 void main() {
   const float GLOBAL_AMBIENT = 0.2;
   vec4 color = vec4((gl_FrontMaterial.emission * texture2D(diffuse_texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
-  float spot_effect;
+  float bounce = (gl_FrontMaterial.emission * texture2D(specular_texture_color, gl_TexCoord[1].st)).r * rand_positive(gl_FragCoord.xy);
 
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
@@ -59,7 +59,9 @@ void main() {
       float n_dot_hv = max(dot(normal0,half_vector), 0.0);
       color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
-      float dist_ratio = 65536.0f * (dist - near_plane) / (far_plane - near_plane);
+      color.r *= rand_positive(gl_FragCoord.xy);
+
+      float dist_ratio = 65536.0f * (1.0 + 0.1 * bounce) * (dist - near_plane) / (far_plane - near_plane);
       color.g = floor(dist_ratio / 256.0f) / 256.0;
       color.b = floor(mod(dist_ratio, 256.0f)) / 256.0;
       color.a = 1.0;

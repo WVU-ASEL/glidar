@@ -8,14 +8,17 @@ MAGICK=`Magick++-config --cppflags --cxxflags --ldflags --libs`
 
 all: lidargl
 
-lidargl: main.o mesh.o
-	$(CXX) main.o mesh.o -o lidargl $(LDFLAGS) $(FRAMEWORKS) $(MAGICK_LDFLAGS)
+lidargl: main.o mesh.o gl_error.o
+	$(CXX) main.o mesh.o gl_error.o -o lidargl $(LDFLAGS) $(FRAMEWORKS) $(MAGICK_LDFLAGS)
 
 main.o: main.cpp
 	$(CXX) $(CXXFLAGS) -c main.cpp $(MAGICK_CXXFLAGS)
 
 mesh.o: mesh.cpp
 	$(CXX) $(CXXFLAGS) -c mesh.cpp $(MAGICK_CXXFLAGS)
+
+gl_error.o: gl_error.cpp
+	$(CXX) $(CXXFLAGS) -c gl_error.cpp $(MAGICK_CXXFLAGS)
 
 clean:
 	rm -rf lidargl *.o

@@ -92,6 +92,9 @@ public:
     glUniform1fv(camera_z_id, 1, &camera_z);
     glUniform1fv(far_plane_id, 1, &far_plane);
     glUniform1fv(near_plane_id, 1, &real_near_plane);
+
+    check_gl_error();
+
   }
 
   void rotate_model(Shader* shader_program, float x, float y, float z) {
@@ -133,6 +136,8 @@ public:
     glUniform1fv(camera_z_id, 1, &camera_z);
     glUniform1fv(far_plane_id, 1, &far_plane);
     glUniform1fv(near_plane_id, 1, &real_near_plane);
+
+    check_gl_error();
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -224,7 +229,7 @@ public:
   }
 
   void render(Shader* shader_program, float x, float y, float z, bool box = true) {
-    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_TEXTURE_2D); // Probably has no meaning since we're using shaders.
     glEnable(GL_NORMALIZE);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
@@ -266,8 +271,13 @@ public:
     glRotatef(z, 0.0, 0.0, 1.0);
 
     glTranslatef(-centroid.x, -centroid.y, -centroid.z);
+
+    check_gl_error();
+
     // Render the mesh.
     mesh.render(shader_program);
+
+    check_gl_error();
 
     glDisable(GL_LIGHT0);
     glDisable(GL_LIGHTING);

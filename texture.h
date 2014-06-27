@@ -24,6 +24,7 @@
 #include <GL/glew.h>
 #include <Magick++.h>
 
+#include "gl_error.h"
 #include "shader.h"
 
 class Texture
@@ -64,6 +65,8 @@ public:
       glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
 
+    check_gl_error();
+
     return true;
   }
 
@@ -75,8 +78,11 @@ public:
     if (shader_program) {
       for (size_t i = 0; i < filenames.size(); ++i) {
         glActiveTexture(GL_TEXTURE0 + i);
+        check_gl_error();
         GLint location = glGetUniformLocation(shader_program->id(), UNIFORM_NAMES[i]);
+        check_gl_error();
         glUniform1i(location, i);
+        check_gl_error();
 
         glBindTexture(GL_TEXTURE_2D, texture_object_handles[i]);
       }
