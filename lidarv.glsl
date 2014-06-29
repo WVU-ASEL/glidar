@@ -19,7 +19,7 @@ varying vec3  ec_pos;
 
 void main() {
   float n_dot_l;
-  specular = vec4(1.0, 1.0, 1.0, 1.0);
+  //specular = vec4(1.0, 1.0, 1.0, 1.0);
 
   normal0 = normalize(gl_NormalMatrix * normal);
 
@@ -33,9 +33,10 @@ void main() {
   gl_TexCoord[1].st = specular_tex; //gl_MultiTexCoord1;
 
   //diffuse  = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
-  diffuse = vec4(1.0, 1.0, 1.0, 1.0);
-  //specular = gl_FrontMaterial.specular * gl_LightSource[0].specular;
-  ambient  = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
+  //diffuse = vec4(1.0, 1.0, 1.0, 1.0);
+  diffuse  = gl_FrontMaterial.diffuse  * gl_LightSource[0].diffuse;
+  specular = gl_FrontMaterial.specular * gl_LightSource[0].specular;
+  ambient  = gl_FrontMaterial.ambient  * gl_LightSource[0].ambient;
 
   n_dot_l = max(dot(normal0, light_dir), 0.0);
 

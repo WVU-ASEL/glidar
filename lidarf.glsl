@@ -34,16 +34,17 @@ float rand_0_mean(vec2 co) {
 
 void main() {
   const float GLOBAL_AMBIENT = 0.2;
-  vec4 color = vec4((gl_FrontMaterial.emission * texture2D(diffuse_texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
-  float bounce = (gl_FrontMaterial.emission * texture2D(specular_texture_color, gl_TexCoord[1].st)).r * rand_positive(gl_FragCoord.xy);
-
+  vec4 color = vec4(gl_FrontMaterial.emission.r, 0.0, 0.0, 1.0);
+  vec4 diffuse_color = vec4((diffuse * texture2D(diffuse_texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
+  vec4 spec_color = vec4((specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r, 0.0, 0.0, 1.0);
+  //float bounce = (specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r * rand_positive(gl_FragCoord.xy);
   vec3 light_dir0 = gl_LightSource[0].position.xyz - ec_pos;
 
   float dist = length(light_dir0);
 
   float n_dot_l = max(dot(normal0, normalize(light_dir0)), 0.0);
 
-  color = vec4(color.r + GLOBAL_AMBIENT * gl_FrontMaterial.ambient.r, 0.0, 0.0, 1.0);
+  color = vec4(color.r + GLOBAL_AMBIENT * ambient.r, 0.0, 0.0, 1.0);
 
   if (n_dot_l > 0.0) {
 
@@ -54,14 +55,14 @@ void main() {
       spot_effect = pow(spot_effect, gl_LightSource[0].spotExponent);
       float att = spot_effect / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
-      color += att * (n_dot_l * diffuse + ambient);
+      color += att * (n_dot_l * diffuse_color + ambient);
 
       float n_dot_hv = max(dot(normal0,half_vector), 0.0);
-      color += att * gl_FrontMaterial.specular * specular * pow(n_dot_hv, gl_FrontMaterial.shininess);
+      color += att * spec_color * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
-      color.r *= rand_positive(gl_FragCoord.xy);
+      //color.r *= rand_positive(gl_FragCoord.xy);
 
-      float dist_ratio = 65536.0f * (1.0 + 0.1 * bounce) * (dist - near_plane) / (far_plane - near_plane);
+      float dist_ratio = 65536.0f * (dist - near_plane) / (far_plane - near_plane);
       color.g = floor(dist_ratio / 256.0f) / 256.0;
       color.b = floor(mod(dist_ratio, 256.0f)) / 256.0;
       color.a = 1.0;
