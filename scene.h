@@ -303,8 +303,52 @@ public:
 
 
   /*
-   * Write the current color buffer as a PCD (point cloud file).
+   * Write the current color buffer as a PCD (point cloud file) (ASCII version).
    */
+  void save_point_cloud_ascii(const std::string& basename, unsigned int width, unsigned int height) {
+    std::string filename = basename + ".pcd";
+
+    std::cerr << "Saving point cloud..." << std::endl;
+
+    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
+    glm::ivec4 viewport;
+    glm::dmat4 model_view_matrix, projection_matrix;
+    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
+    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
+    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
+
+    std::ofstream out(filename);
+
+    // Print PCD header
+    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
+    out << "WIDTH " << width << std::endl;
+    out << "HEIGHT " << height << std::endl;
+    out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
+    out << "POINTS " << width*height << std::endl;
+    out << "DATA ascii" << std::endl;
+
+    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
+    // forever to run.
+    for (size_t i = 0; i < height; ++i) {
+      for (size_t j = 0; j < width; ++j) {
+
+        // unproject writes into rgba
+        glm::vec4 rgba;
+        glm::dvec3 position = unproject(rgba, model_view_matrix, projection_matrix, viewport, height, i, j);
+        //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
+
+        out << position[0] << ' ' << position[1] << ' ' << position[2] << ' ' << rgba[0] << '\n';
+      }
+    }
+
+    out.close();
+
+    std::cerr << "Saved '" << filename << "'" << std::endl;
+  }
+
+  /*
+  * Write the current color buffer as a PCD (point cloud file) (binary version).
+  */
   void save_point_cloud(const std::string& basename, unsigned int width, unsigned int height) {
     std::string filename = basename + ".pcd";
 
@@ -325,7 +369,7 @@ public:
     out << "HEIGHT " << height << std::endl;
     out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
     out << "POINTS " << width*height << std::endl;
-    out << "DATA ASCII" << std::endl;
+    out << "DATA binary" << std::endl;
 
     // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
     // forever to run.
@@ -337,7 +381,12 @@ public:
         glm::dvec3 position = unproject(rgba, model_view_matrix, projection_matrix, viewport, height, i, j);
         //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
 
-        out << position[0] << ' ' << position[1] << ' ' << position[2] << ' ' << rgba[0] << '\n';
+        float data[4];
+        data[0] = (float)position[0];
+        data[1] = (float)position[1];
+        data[2] = (float)position[2];
+        data[3] = (float)rgba[0];
+        out.write((char*)(data), sizeof(float)*4);
       }
     }
 

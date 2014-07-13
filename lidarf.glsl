@@ -4,9 +4,10 @@ varying vec3 normal0;
 
 varying vec3 light_dir;
 
-varying vec4  diffuse;
-varying vec4  ambient;
-varying vec4  specular;
+//varying vec4 emission;
+varying vec4 diffuse;
+varying vec4 ambient;
+varying vec4 specular;
 
 varying vec3 half_vector;
 varying vec3 ec_pos;

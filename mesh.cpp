@@ -28,15 +28,6 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
   const aiVector3D zero_3d(0.0, 0.0, 0.0);
 
 
-  // initialize our dimension trackers.
-  if (mesh->mNumVertices != 0) {
-    min_extremities.x = mesh->mVertices[0].x;
-    min_extremities.y = mesh->mVertices[0].y;
-    min_extremities.z = mesh->mVertices[0].z;
-    max_extremities = min_extremities;
-  }
-
-
   if (mesh->mNumBones) {
     std::vector<aiMatrix4x4> bone_matrices(mesh->mNumBones);
 
@@ -81,6 +72,14 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
       std::cout << bone_matrices[i].b1 << ' ' << bone_matrices[i].b2 << ' ' << bone_matrices[i].b3 << ' ' << bone_matrices[i].b4 << std::endl;
       std::cout << bone_matrices[i].c1 << ' ' << bone_matrices[i].c2 << ' ' << bone_matrices[i].c3 << ' ' << bone_matrices[i].c4 << std::endl;
       std::cout << bone_matrices[i].d1 << ' ' << bone_matrices[i].d2 << ' ' << bone_matrices[i].d3 << ' ' << bone_matrices[i].d4 << std::endl;
+    }
+
+    // initialize our dimension trackers.
+    if (mesh->mNumVertices != 0) {
+      min_extremities.x = final_pos[0].x;
+      min_extremities.y = final_pos[0].y;
+      min_extremities.z = final_pos[0].z;
+      max_extremities = min_extremities;
     }
 
     // Add each updated vertex and calculate its extremities.

@@ -11,6 +11,7 @@ varying vec3 normal0;
 
 varying vec3 light_dir;
 
+//varying vec4  emission;
 varying vec4  diffuse;
 varying vec4  ambient;
 varying vec4  specular;
@@ -32,8 +33,7 @@ void main() {
   gl_TexCoord[0].st = diffuse_tex; //gl_MultiTexCoord0;
   gl_TexCoord[1].st = specular_tex; //gl_MultiTexCoord1;
 
-  //diffuse  = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
-  //diffuse = vec4(1.0, 1.0, 1.0, 1.0);
+  //emission = vec4(1.0, 1.0, 1.0, 1.0);
   diffuse  = gl_FrontMaterial.diffuse  * gl_LightSource[0].diffuse;
   specular = gl_FrontMaterial.specular * gl_LightSource[0].specular;
   ambient  = gl_FrontMaterial.ambient  * gl_LightSource[0].ambient;
