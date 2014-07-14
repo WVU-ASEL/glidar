@@ -1,10 +1,17 @@
 #!/usr/bin/env ruby
 
 require 'nmatrix'
+require 'shellwords'
 
 LIDAR_WIDTH  = 256  # pixels
 LIDAR_HEIGHT = 256  # pixels
 LIDAR_FOV    = 20   # degrees
+MODEL_PATH   = 'ISS\ models\ 2011/Objects/Modules/MLM/MLM.lwo'
+
+if ARGV.size < 6
+  puts "Seven arguments required: num_angles num_distances min_distance max_distance model_path model_scale output_path"
+  raise
+end
 
 # Generate a distribution of distances and rotations.
 # For now, let's have both be uniform distributions.
@@ -23,9 +30,9 @@ max_distance  = ARGV.shift.to_f
 # * Model filesystem path
 # * Model scale factor
 # * Output directory
-model_path    = ARGV.shift
+model_path    = MODEL_PATH #(ARGV.shift)
 model_scale   = ARGV.shift.to_f
-output_path   = ARGV.shift
+output_path   = File.path(ARGV.shift)
 
 distances     = []
 
@@ -91,7 +98,7 @@ distances.each do |d|
     # Generate the LIDAR image
     cmd = "./lidargl #{model_path} #{model_scale} 0 0 0 #{a.join(' ')} #{d} #{LIDAR_WIDTH} #{LIDAR_HEIGHT} #{LIDAR_FOV} #{output_filename}"
     STDERR.puts "cmd is:\n#{cmd}"
-    #`#{cmd}`
+    `#{cmd}`
 
     # Write the distance and angles to a file.
     # On the second line give the full command string.
@@ -103,15 +110,21 @@ distances.each do |d|
     # Now write the transformation matrix to a file.
     f  = File.open(pose_filename, 'w')
 
-    rz = NMatrix.rotate_z a[2]
-    ry = NMatrix.rotate_y a[1]
-    rx = NMatrix.rotate_x a[0]
-    t  = NMatrix.translate 0.0, 0.0, d
-    transform = t * rx * ry * rz
-    ary = t.to_a.flatten
-    f.puts ary.join(' ')
+    #rz = NMatrix.rotate_z a[2]
+    #ry = NMatrix.rotate_y a[1]
+    #rx = NMatrix.rotate_x a[0]
+    #t  = NMatrix.translate 0.0, 0.0, d
+    #transform = t * rx * ry * rz
 
-    f.close
+    #require 'pry'
+    #binding.pry
+
+    #ary = transform.to_a.flatten
+    #f.puts ary.join(' ')
+
+    #f.close
+
+    count += 1
   end
 end
 
