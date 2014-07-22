@@ -37,7 +37,7 @@ output_path   = File.path(ARGV.shift)
 distances     = []
 
 num_distances.times do
-  distances << min_distance + rand * (max_distance - min_distance)
+  distances << (min_distance + rand * rand * (max_distance - min_distance))
 end
 
 angles        = []

@@ -146,15 +146,12 @@ int main(int argc, char** argv) {
       scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
                                          rx, ry, rz);
 
-      std::cerr << "far plane: " << scene.get_far_plane() << std::endl;
-
       s_key_pressed = false;
 
       if (save_and_quit) saved_now_quit = true;
     }
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
-      std::cerr << "mouse button pressed!" << std::endl;
       mouse_button_pressed = true;
     }
 
