@@ -381,9 +381,9 @@ public:
         glm::dvec3 position = unproject(rgba, model_view_matrix, projection_matrix, viewport, height, i, j);
         //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
 
-        float data[4]; // switch back to a right-handed coordinate system.
-        data[0] = -(float)position[0];
-        data[1] = -(float)position[1];
+        float data[4];
+        data[0] =  (float)position[0];
+        data[1] =  (float)position[1];
         data[2] =  (float)position[2];
         data[3] =  (float)rgba[0];
         out.write((char*)(data), sizeof(float)*4);
