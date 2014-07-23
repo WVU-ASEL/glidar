@@ -68,33 +68,17 @@ public:
     std::cerr << "NOTE: Object will be re-centered prior to rendering." << std::endl;
   }
 
-  void move_camera(Shader* shader_program, float fov, float z) {
-    glMatrixMode(GL_PROJECTION);
+  void move_camera(Shader* shader_program, float z) {
+    glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
     std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
+    //std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
     camera_z -= z;
     ideal_near_plane -= z;
     real_near_plane = std::max(MIN_NEAR_PLANE, ideal_near_plane);
     far_plane -= z;
-
-    gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
-    glTranslatef(0.0, 0.0, -camera_z);
-    glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
-
-    glUseProgram(shader_program->id());
-    GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
-    GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
-    GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
-
-    std::cerr << "camera_z is now " << camera_z << std::endl;
-    glUniform1fv(camera_z_id, 1, &camera_z);
-    glUniform1fv(far_plane_id, 1, &far_plane);
-    glUniform1fv(near_plane_id, 1, &real_near_plane);
-
-    check_gl_error();
-
   }
 
   void rotate_model(Shader* shader_program, float x, float y, float z) {
@@ -111,7 +95,7 @@ public:
   }
 
 
-  void setup(Shader* shader_program, float fov) {
+  void projection_setup(float fov) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glPolygonMode( GL_FRONT, GL_FILL );
@@ -119,28 +103,7 @@ public:
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
-    std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
-
     gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
-    glTranslatef(0.0, 0.0, -camera_z); // move it to 1000 m away.
-    glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
-
-
-    glUseProgram(shader_program->id());
-    GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
-    GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
-    GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
-
-    std::cerr << "camera_z is now " << camera_z << std::endl;
-    glUniform1fv(camera_z_id, 1, &camera_z);
-    glUniform1fv(far_plane_id, 1, &far_plane);
-    glUniform1fv(near_plane_id, 1, &real_near_plane);
-
-    check_gl_error();
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
   }
 
 
@@ -228,7 +191,10 @@ public:
     glPopMatrix();
   }
 
-  void render(Shader* shader_program, float x, float y, float z, bool box = true) {
+  void render(Shader* shader_program, float fov, float rx, float ry, float rz, bool box = true) {
+    projection_setup(fov);
+
+
     glEnable(GL_TEXTURE_2D); // Probably has no meaning since we're using shaders.
     glEnable(GL_NORMALIZE);
     glEnable(GL_CULL_FACE);
@@ -251,6 +217,21 @@ public:
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
+
+    glTranslatef(0.0, 0.0, -camera_z);
+    glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
+
+    glUseProgram(shader_program->id());
+    GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
+    GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
+    GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
+
+    glUniform1fv(camera_z_id, 1, &camera_z);
+    glUniform1fv(far_plane_id, 1, &far_plane);
+    glUniform1fv(near_plane_id, 1, &real_near_plane);
+
+    check_gl_error();
+
     // For debugging purposes, let's make sure we can see a box.
     if (box) render_box();
 
@@ -266,9 +247,9 @@ public:
     // Translate and scale only the mesh.
     glm::vec3 centroid(mesh.centroid());
     glScalef(scale_factor, scale_factor, scale_factor);
-    glRotatef(x, 1.0, 0.0, 0.0);
-    glRotatef(y, 0.0, 1.0, 0.0);
-    glRotatef(z, 0.0, 0.0, 1.0);
+    glRotatef(rx, 1.0, 0.0, 0.0);
+    glRotatef(ry, 0.0, 1.0, 0.0);
+    glRotatef(rz, 0.0, 0.0, 1.0);
 
     glTranslatef(-centroid.x, -centroid.y, -centroid.z);
 

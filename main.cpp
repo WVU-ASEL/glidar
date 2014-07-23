@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
   //Shader shader_program("spotv.glsl", "spotf.glsl");
   Shader shader_program("lidarv.glsl", "lidarf.glsl");
 
-  scene.setup(&shader_program, fov);
+  scene.projection_setup(fov);
 
   float rx = model_init_rotate_x,
         ry = model_init_rotate_y,
@@ -122,12 +122,12 @@ int main(int argc, char** argv) {
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-      scene.move_camera(&shader_program, fov, delta_time * SPEED);
+      scene.move_camera(&shader_program, delta_time * SPEED);
     }
 
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-      scene.move_camera(&shader_program, fov, delta_time * -SPEED);
+      scene.move_camera(&shader_program, delta_time * -SPEED);
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
     if (save_and_quit || (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)) {
 
       // First, re-render without the box, or it'll show up in our point cloud.
-      scene.render(&shader_program, rx, ry, rz, false);
+      scene.render(&shader_program, fov, rx, ry, rz, false);
 
       scene.save_point_cloud(save_and_quit ? pcd_filename : "buffer",
                              width,
@@ -179,7 +179,7 @@ int main(int argc, char** argv) {
     rz += model_rotate_z * delta_time;
 
 
-    scene.render(&shader_program, rx, ry, rz, true); // render with the box
+    scene.render(&shader_program, fov, rx, ry, rz, true); // render with the box
 
     glfwSwapBuffers(window);
     glfwPollEvents();
