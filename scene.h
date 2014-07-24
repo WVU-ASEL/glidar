@@ -98,6 +98,22 @@ public:
   void projection_setup(float fov) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_TEXTURE_2D); // Probably has no meaning since we're using shaders.
+    glEnable(GL_NORMALIZE);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_LINE_SMOOTH);
+    glDisable(GL_POLYGON_SMOOTH);
+    glDisable(GL_MULTISAMPLE);
+    glEnable(GL_BLEND);
+    //glBlendFuncSeparate(GL_ONE, GL_ONE, GL_SRC_ALPHA, GL_SRC_ALPHA);
+    //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glDepthFunc(GL_LEQUAL);
+    glFrontFace(GL_CCW);
+    glCullFace(GL_BACK);
+
     glPolygonMode( GL_FRONT, GL_FILL );
 
     glMatrixMode(GL_PROJECTION);
@@ -153,6 +169,8 @@ public:
    */
   void render_box() {
     glPushMatrix();
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D); // Probably has no meaning since we're using shaders.
 
     glRotatef(45.0f, 1.0, 0.0, 0.0);
     glRotatef(45.0f, 0.0, 1.0, 0.0);
@@ -188,27 +206,13 @@ public:
     glVertex3f(-100.0, 100.0,  100.0);
     glEnd();
 
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_LIGHTING);
     glPopMatrix();
   }
 
   void render(Shader* shader_program, float fov, float rx, float ry, float rz, bool box = true) {
     projection_setup(fov);
-
-
-    glEnable(GL_TEXTURE_2D); // Probably has no meaning since we're using shaders.
-    glEnable(GL_NORMALIZE);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_LINE_SMOOTH);
-    glDisable(GL_POLYGON_SMOOTH);
-    glDisable(GL_MULTISAMPLE);
-    glEnable(GL_BLEND);
-    //glBlendFuncSeparate(GL_ONE, GL_ONE, GL_SRC_ALPHA, GL_SRC_ALPHA);
-    //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glDepthFunc(GL_LEQUAL);
-    glFrontFace(GL_CCW);
-    glCullFace(GL_BACK);
-
 
     // clear window with the current clearing color, and clear the depth buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // | GL_DEPTH_BUFFER_BIT);
@@ -217,9 +221,26 @@ public:
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
+    float light_position[] = {0.0, 0.0, 0.0, 1.0};
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+    glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 10.0);
+
+/*    float light_diffuse[]  = {1.0, 1.0, 1.0, 1.0};
+    float light_ambient[]  = {1.0, 1.0, 1.0, 1.0};
+    float light_specular[]  = {1.0, 1.0, 1.0, 1.0};
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular); */
+
 
     glTranslatef(0.0, 0.0, -camera_z);
-    glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0);
+    //glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0); // This would be used to move the camera slightly away from the laser source
+
+    // For debugging purposes, let's make sure we can see a box.
+    if (box) render_box();
+
+    glPushMatrix();
+
 
     glUseProgram(shader_program->id());
     GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
@@ -232,17 +253,6 @@ public:
 
     check_gl_error();
 
-    // For debugging purposes, let's make sure we can see a box.
-    if (box) render_box();
-
-
-    glPushMatrix();
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-
-    float light_position[] = {0.0, 0.0, camera_z, 0.0};
-    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-    glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 10.0);
 
     // Translate and scale only the mesh.
     glm::vec3 centroid(mesh.centroid());
@@ -260,8 +270,6 @@ public:
 
     check_gl_error();
 
-    glDisable(GL_LIGHT0);
-    glDisable(GL_LIGHTING);
     glPopMatrix();
 
     // flush drawing commands
