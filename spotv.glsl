@@ -36,7 +36,6 @@ attribute vec2 diffuse_tex;
 attribute vec2 specular_tex;
 attribute vec3 normal;
 
-//uniform float camera_z;
 uniform mat4 LightModelViewMatrix;
 
 varying vec3 normal0;
@@ -54,7 +53,6 @@ void main() {
 
   // Get coordinates in camera frame.
   ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
-  vec3 ec_light_pos = vec3(gl_ModelViewMatrix * vec4(gl_LightSource[0].position));
   vec3 ec_light_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
 
   half_vector = normalize(ec_light_dir + ec_light_dir); //gl_LightSource[0].halfVector.xyz;

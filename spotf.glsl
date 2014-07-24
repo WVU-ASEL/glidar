@@ -54,7 +54,8 @@ void main() {
   vec4 diffuse_color = diffuse * texture2D(diffuse_texture_color, gl_TexCoord[0].st);
   vec4 spec_color    = specular * texture2D(specular_texture_color, gl_TexCoord[1].st);
 
-  vec3 light_dir = vec3(LightModelViewMatrix * gl_LightSource[0].position) - ec_pos;
+  vec3 spot_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
+  vec3 light_dir = spot_dir - ec_pos;
 
   float dist = length(light_dir);
 
@@ -67,7 +68,6 @@ void main() {
 
   if (n_dot_l > 0.0) {
 
-    vec3 spot_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
     float spot_effect = dot(normalize(-spot_dir), normalize(-light_dir));
 
     if (spot_effect > gl_LightSource[0].spotCosCutoff) {
