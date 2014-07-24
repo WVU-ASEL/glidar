@@ -32,14 +32,14 @@
  */
 
 attribute vec3 position;
-attribute vec2 tex;
+attribute vec2 diffuse_tex;
+attribute vec2 specular_tex;
 attribute vec3 normal;
 
 //uniform float camera_z;
+uniform mat4 LightModelViewMatrix;
 
 varying vec3 normal0;
-
-varying vec3 light_dir;
 
 varying vec4  diffuse;
 varying vec4  ambient;
@@ -48,23 +48,23 @@ varying vec3  half_vector;
 varying vec3  ec_pos;
 
 void main() {
-  float n_dot_l;
   specular = vec4(1.0, 1.0, 1.0, 1.0);
 
   normal0 = normalize(gl_NormalMatrix * normal);
 
-  light_dir = normalize(vec3(0.0, 0.0, 1.0));
-
+  // Get coordinates in camera frame.
   ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
+  vec3 ec_light_pos = vec3(gl_ModelViewMatrix * vec4(gl_LightSource[0].position));
+  vec3 ec_light_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
 
-  half_vector = normalize(light_dir + light_dir);
+  half_vector = normalize(ec_light_dir + ec_light_dir); //gl_LightSource[0].halfVector.xyz;
 
-  gl_TexCoord[0].st = tex;
+  gl_TexCoord[0].st = diffuse_tex;
+  gl_TexCoord[1].st = specular_tex;
 
-  diffuse = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
-  ambient = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
-
-  n_dot_l = max(dot(normal0, light_dir), 0.0);
+  diffuse  = gl_FrontMaterial.diffuse * gl_LightSource[0].diffuse;
+  specular = gl_FrontMaterial.specular * gl_LightSource[0].specular;
+  ambient  = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
 
   gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 1.0);
 }

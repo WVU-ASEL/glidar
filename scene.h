@@ -221,9 +221,21 @@ public:
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
+    glUseProgram(shader_program->id());
+
     float light_position[] = {0.0, 0.0, 0.0, 1.0};
+    float light_direction[] = {0.0, 0.0, 1.0, 0.0};
     glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+    glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, light_direction);
     glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 10.0);
+    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, 0.0001f);
+    glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.00000001f);
+
+
+    float light_matrix[] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    glGetFloatv(GL_MODELVIEW_MATRIX, light_matrix);
+    GLint light_matrix_id = glGetUniformLocation(shader_program->id(), "LightModelViewMatrix");
+    glUniformMatrix4fv(light_matrix_id, 1, false, light_matrix);
 
 /*    float light_diffuse[]  = {1.0, 1.0, 1.0, 1.0};
     float light_ambient[]  = {1.0, 1.0, 1.0, 1.0};
@@ -237,12 +249,14 @@ public:
     //glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0); // This would be used to move the camera slightly away from the laser source
 
     // For debugging purposes, let's make sure we can see a box.
+    glUseProgramObjectARB(0);
     if (box) render_box();
+    glUseProgram(shader_program->id());
 
     glPushMatrix();
 
 
-    glUseProgram(shader_program->id());
+
     GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
     GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
     GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
