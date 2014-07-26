@@ -81,19 +81,6 @@ public:
     far_plane -= z;
   }
 
-  void rotate_model(Shader* shader_program, float x, float y, float z) {
-    glMatrixMode(GL_MODELVIEW);
-    glRotatef(x, 1.0, 0.0, 0.0);
-    glRotatef(y, 0.0, 1.0, 0.0);
-    glRotatef(z, 0.0, 0.0, 1.0);
-
-    // Scale only the mesh.
-    glScalef(scale_factor, scale_factor, scale_factor);
-
-    // Render the mesh.
-    mesh.render(shader_program);
-  }
-
 
   void projection_setup(float fov) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -270,11 +257,12 @@ public:
 
     // Translate and scale only the mesh.
     glm::vec3 centroid(mesh.centroid());
-    glScalef(scale_factor, scale_factor, scale_factor);
-    glRotatef(rx, 1.0, 0.0, 0.0);
-    glRotatef(ry, 0.0, 1.0, 0.0);
-    glRotatef(rz, 0.0, 0.0, 1.0);
 
+    glRotatef(rz, 0.0, 0.0, 1.0);
+    glRotatef(ry, 0.0, 1.0, 0.0);
+    glRotatef(rx, 1.0, 0.0, 0.0);
+
+    glScalef(scale_factor, scale_factor, scale_factor);
     glTranslatef(-centroid.x, -centroid.y, -centroid.z);
 
     check_gl_error();
