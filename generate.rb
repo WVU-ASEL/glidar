@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'nmatrix'
+require 'nmatrix/homogeneous.rb'
 require 'shellwords'
 
 LIDAR_WIDTH  = 256  # pixels
@@ -9,7 +10,7 @@ LIDAR_FOV    = 20   # degrees
 MODEL_PATH   = 'ISS\ models\ 2011/Objects/Modules/MLM/MLM.lwo'
 
 if ARGV.size < 6
-  puts "Seven arguments required: num_angles num_distances min_distance max_distance model_path model_scale output_path"
+  puts "Six arguments required: num_angles num_distances min_distance max_distance model_scale output_path"
   raise
 end
 
@@ -48,46 +49,6 @@ num_angles.times do
                 rand * 360.0 - 180.0]
 end
 
-
-class NMatrix
-  class << self
-    def rotate_x angle_degrees
-      c = Math.cos(angle_degrees * Math::PI/180.0)
-      s = Math.sin(angle_degrees * Math::PI/180.0)
-      NMatrix.new(4, [1.0, 0.0, 0.0, 0.0,
-                      0.0, c,   -s,  0.0,
-                      0.0, s,    c,  0.0,
-                      0.0, 0.0, 0.0, 1.0], dtype: :float32)
-    end
-
-    def rotate_y angle_degrees
-      c = Math.cos(angle_degrees * Math::PI/180.0)
-      s = Math.sin(angle_degrees * Math::PI/180.0)
-      NMatrix.new(4, [ c,  0.0,  s,  0.0,
-                      0.0, 1.0, 0.0, 0.0,
-                      -s,  0.0,  c,  0.0,
-                      0.0, 0.0, 0.0, 1.0], dtype: :float32)
-    end
-
-    def rotate_z angle_degrees
-      c = Math.cos(angle_degrees * Math::PI/180.0)
-      s = Math.sin(angle_degrees * Math::PI/180.0)
-      NMatrix.new(4, [ c,  -s,  0.0, 0.0,
-                       s,   c,  0.0, 0.0,
-                      0.0, 0.0, 1.0, 0.0,
-                      0.0, 0.0, 0.0, 1.0], dtype: :float32)
-    end
-
-    def translate x, y, z
-      NMatrix.new(4, [1.0, 0.0, 0.0,  x,
-                      0.0, 1.0, 0.0,  y,
-                      0.0, 0.0, 1.0,  z,
-                      0.0, 0.0, 0.0, 1.0], dtype: :float32)
-    end
-  end
-end
-
-
 count = 0
 distances.each do |d|
   angles.each do |a|
@@ -110,19 +71,16 @@ distances.each do |d|
     # Now write the transformation matrix to a file.
     f  = File.open(pose_filename, 'w')
 
-    #rz = NMatrix.rotate_z a[2]
-    #ry = NMatrix.rotate_y a[1]
-    #rx = NMatrix.rotate_x a[0]
-    #t  = NMatrix.translate 0.0, 0.0, d
-    #transform = t * rx * ry * rz
+    rz = NMatrix.z_rotation( a[2] * Math::PI/180.0 )
+    ry = NMatrix.y_rotation( a[1] * Math::PI/180.0 )
+    rx = NMatrix.z_rotation( a[0] * Math::PI/180.0 )
+    t  = NMatrix.translation 0.0, 0.0, d
+    transform = rx.dot(ry).dot(rz).dot(t)
 
-    #require 'pry'
-    #binding.pry
+    ary = transform.to_a.flatten
+    f.puts ary.join(' ')
 
-    #ary = transform.to_a.flatten
-    #f.puts ary.join(' ')
-
-    #f.close
+    f.close
 
     count += 1
   end
