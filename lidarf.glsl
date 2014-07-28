@@ -70,7 +70,7 @@ void main() {
   //float bounce = (specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r * rand_positive(gl_FragCoord.xy);
 
   vec3 spot_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
-  vec3 light_dir = spot_dir - ec_pos;
+  vec3 light_dir = -ec_pos; //spot_dir - ec_pos;
 
   float dist = length(light_dir);
 
@@ -82,7 +82,7 @@ void main() {
   if (n_dot_l > 0.0) {
 
     // Calculate the angle w.r.t. the spotlight.
-    float spot_effect = dot(normalize(-spot_dir), normalize(-light_dir));
+    float spot_effect = dot(normalize(spot_dir), normalize(light_dir));
 
     if (spot_effect > gl_LightSource[0].spotCosCutoff) {
       float att = 1.0 / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
@@ -95,7 +95,8 @@ void main() {
 
       //color.r *= rand_positive(gl_FragCoord.xy);
 
-      float dist_ratio = 65536.0f * (dist - near_plane) / (far_plane - near_plane);
+      float corrected_dist = spot_effect * dist;
+      float dist_ratio = 65536.0f * (corrected_dist - near_plane) / (far_plane - near_plane);
       color.g = floor(dist_ratio / 256.0f) / 256.0;
       color.b = floor(mod(dist_ratio, 256.0f)) / 256.0;
       color.a = 1.0;
