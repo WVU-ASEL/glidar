@@ -59,7 +59,13 @@ distances.each do |d|
     # Generate the LIDAR image
     cmd = "./lidargl #{model_path} #{model_scale} 0 0 0 #{a.join(' ')} #{d} #{LIDAR_WIDTH} #{LIDAR_HEIGHT} #{LIDAR_FOV} #{output_filename}"
     STDERR.puts "cmd is:\n#{cmd}"
-    `#{cmd}`
+
+    if system(cmd)
+    elsif system(cmd) # Try a second time
+      STDERR.puts "****** ERROR: GLIDAR HAS REPRODUCIBLE BUG."
+      STDERR.puts "****** COMMAND: #{cmd}"
+      STDERR.puts "Continuing for now."
+    end
 
     # Write the distance and angles to a file.
     # On the second line give the full command string.
