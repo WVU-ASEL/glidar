@@ -2,7 +2,7 @@
 
 A simple OpenGL-based LIDAR simulator
 
-* [John O. Woods, Ph.D](http://github.com/mohawkjohn)
+* [John O. Woods, Ph.D](http://github.com/mohawkjohn) &mdash; john.o.woods@gmail.com
 * [WVU Applied Space Exploration Laboratory](http://asel.mae.wvu.edu/)
 * [West Virginia Robotic Technology Center](http://wvrtc.com/)
 * [NASA GSFC Satellite Servicing Capabilities Office](http://ssco.gsfc.nasa.gov/)
@@ -35,8 +35,8 @@ following requirements:
 Items with asterisks are pretty much essential, but you might be able to get the code working with older versions of
 ImageMagick/Magick++ and GLFW.
 
-There's an older version of the software which uses a regular Makefile instead of CMake, so it's also possible -- but
-inadvisable -- to use GLIDAR without CMake.
+There's an older version of the software which uses a regular Makefile instead of CMake, so it's also possible &mdash; but
+inadvisable &mdash; to use GLIDAR without CMake.
 
 ## Installation ##
 
@@ -97,7 +97,7 @@ object scale.
 
 The greatest limitation right now is in the ASSIMP library, which loads the 3D models. I have not been able to get it to
 work with the [full high-resolution International Space Station model](http://nasa3d.arc.nasa.gov/detail/iss-hi-res), 
-for example -- but it should load individual modules of the ISS properly.
+for example &mdash; but it should load individual modules of the ISS properly.
 
 Other limitations:
 
@@ -112,7 +112,7 @@ Let's say you want to use the Zarya module of NASA's high-res ISS scene. The Zar
 `ISS models 2011/Objects/Modules/MLM/MLM.lwo`. I calculated that the scale factor for this should be about 0.024 if you
 want to work in meters, or 0.24 if you don't mind working in decimeters.
 
-You could also try the `n20r4_d5.obj` fake asteroid, which is included in the source tree.
+You could also try the `n20r4_d5.obj` fake asteroid, which is included in the `models` subdirectory of the source tree.
 
 ## Bug Reports ##
 
