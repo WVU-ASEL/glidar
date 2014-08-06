@@ -182,8 +182,8 @@ bool Mesh::init_materials(const aiScene* scene, const std::string& filename) {
 
 
     std::vector<std::string> texture_filenames(2);
-    texture_filenames[0] = "./white.png";
-    texture_filenames[1] = "./black.png";
+    texture_filenames[0] = "./resources/white.png";
+    texture_filenames[1] = "./resources/black.png";
 
     if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
       std::cerr << "Diffuse texture count = " << material->GetTextureCount(aiTextureType_DIFFUSE) << std::endl;

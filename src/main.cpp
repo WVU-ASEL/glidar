@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
          current_time = glfwGetTime();
   float delta_time = current_time - last_time;
 
-  Shader shader_program("spotv.glsl", "lidarf.glsl");
+  Shader shader_program("shaders/spotv.glsl", "shaders/lidarf.glsl");
   //Shader shader_program("lidarv.glsl", "lidarf.glsl");
 
   scene.projection_setup(fov);
