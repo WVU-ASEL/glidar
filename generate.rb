@@ -57,7 +57,7 @@ distances.each do |d|
     pose_filename     = output_path + "/pose_#{count.to_s.rjust(5, '0')}.txt"
 
     # Generate the LIDAR image
-    cmd = "./lidargl #{model_path} #{model_scale} 0 0 0 #{a.join(' ')} #{d} #{LIDAR_WIDTH} #{LIDAR_HEIGHT} #{LIDAR_FOV} #{output_filename}"
+    cmd = "build/glidar.app/Contents/MacOS/glidar #{model_path} #{model_scale} 0 0 0 #{a.join(' ')} #{d} #{LIDAR_WIDTH} #{LIDAR_HEIGHT} #{LIDAR_FOV} #{output_filename}"
     STDERR.puts "cmd is:\n#{cmd}"
 
     if system(cmd)
