@@ -122,6 +122,9 @@ public:
 
   glm::dvec3 unproject(glm::vec4& rgba, const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
     glReadPixels(x, height - y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
+
+    std::cerr << "RGB12=" << rgba[1] << ',' << rgba[2] << std::endl;
+
     int   gb    = (rgba[1] * 65536) + (rgba[2] * 256);
     double t    = gb == 0 ? 1.0 : gb / 65536.0;
     //double dist = rgba[2] > 0 ? rgba[2] * (far_plane - real_near_plane) + real_near_plane : far_plane;
@@ -131,7 +134,10 @@ public:
     glm::dvec3 position;
     gluUnProject(x, y, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
+    std::cerr << position[0] << ',' << position[1] << ',' << position[2] << '\t';
     position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
+    std::cerr << position[0] << ',' << position[1] << ',' << position[2] << '\n';
+
 
     return position;
   }
@@ -412,7 +418,7 @@ public:
         glm::vec4 rgba;
 
         glReadPixels(i, height - j, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-        int gb = (rgba[1] * 65536) + (rgba[2] * 256);
+        int gb = (rgba[1] * 65280.0) + (rgba[2] * 256.0);
         if (gb == 0) continue;
         double t = gb / 65536.0;
 
