@@ -125,7 +125,7 @@ public:
 
     std::cerr << "RGB12=" << rgba[1] << ',' << rgba[2] << std::endl;
 
-    int   gb    = (rgba[1] * 65536) + (rgba[2] * 256);
+    int   gb    = (rgba[1] * 65280) + (rgba[2] * 256);
     double t    = gb == 0 ? 1.0 : gb / 65536.0;
     //double dist = rgba[2] > 0 ? rgba[2] * (far_plane - real_near_plane) + real_near_plane : far_plane;
     //std::cerr << "blue channel = " << t << std::endl;
@@ -422,6 +422,12 @@ public:
         if (gb == 0) continue;
         double t = gb / 65536.0;
 
+        // Just out of curiosity, what happens if we calculate d ourselves?
+        double d_green = rgba[1] * 65280.0;
+        double d_blue  = rgba[2] * 256.0;
+        double d = ((d_green + d_blue) / 65536.0) * (far_plane - real_near_plane) + real_near_plane;
+
+
         glm::dvec3 position;
         gluUnProject(i, j, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
@@ -429,12 +435,15 @@ public:
 
         data[data_count]   =  (float)position[0];
         data[data_count+1] =  (float)position[1];
-        data[data_count+2] =  (float)position[2];
+        data[data_count+2] =  (float)d; //(float)position[2];
         data[data_count+3] =  (float)rgba[0];
+
+        //std::cerr << "position[2]=" << position[2] << " versus " << d_green << " and " << d_blue << " ( g = " << rgba[1] << ", b = " << rgba[2] << " ) so " << d << std::endl;
 
         data_count += 4;
       }
     }
+    //std::cerr << "far plane = " << far_plane << "\t near plane = " << real_near_plane << std::endl;
 
     std::ofstream out(filename);
     // Print PCD header

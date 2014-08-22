@@ -98,7 +98,7 @@ void main() {
       float corrected_dist = spot_effect * dist;
       float dist_ratio = 65536.0f * (corrected_dist - near_plane) / (far_plane - near_plane);
       color.g = floor(dist_ratio / 256.0f) / 256.0;
-      color.b = floor(mod(dist_ratio, 256.0f)) / 256.0;
+      color.b = mod(dist_ratio, 256.0f) / 256.0;
       color.a = 1.0;
     } else {
       color = vec4(0.0,0.0,0.0,1.0);
