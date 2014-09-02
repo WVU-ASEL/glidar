@@ -75,18 +75,18 @@ distances.each do |d|
     f.close
 
     # Now write the transformation matrix to a file.
-    f  = File.open(pose_filename, 'w')
+    #f  = File.open(pose_filename, 'w')
 
-    rz = NMatrix.z_rotation( a[2] * Math::PI/180.0 )
-    ry = NMatrix.y_rotation( a[1] * Math::PI/180.0 )
-    rx = NMatrix.z_rotation( a[0] * Math::PI/180.0 )
-    t  = NMatrix.translation 0.0, 0.0, d
-    transform = rx.dot(ry).dot(rz).dot(t)
+    #rz = NMatrix.z_rotation( a[2] * Math::PI/180.0 )
+    #ry = NMatrix.y_rotation( a[1] * Math::PI/180.0 )
+    #rx = NMatrix.z_rotation( a[0] * Math::PI/180.0 )
+    #t  = NMatrix.translation 0.0, 0.0, d
+    #transform = rx.dot(ry).dot(rz).dot(t)
 
-    ary = transform.to_a.flatten
-    f.puts ary.join(' ')
+    #ary = transform.to_a.flatten
+    #f.puts ary.join(' ')
 
-    f.close
+    #f.close
 
     count += 1
   end
