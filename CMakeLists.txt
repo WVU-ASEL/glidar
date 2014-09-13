@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(GLIDAR)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+option(ENABLE_PUBSUB "Enable publish-subscribe with ZeroMQ" ON)
+
 if (APPLE)
   include (UseDebugSymbols)
 
@@ -32,6 +34,18 @@ find_package(GLFW 3 REQUIRED)
 include_directories(${GLFW_INCLUDE_DIRS})
 link_directories(${GLFW_LIBRARY_DIRS})
 
+if (ENABLE_PUBSUB)
+  message(STATUS "Publish-subscribe is enabled")
+  find_package(ZeroMQ)
+  include_directories(${ZeroMQ_INCLUDE_DIR})
+
+  if (ZEROMQ_FOUND)
+    add_definitions(-DHAS_ZEROMQ)
+  endif (ZEROMQ_FOUND)
+else (ENABLE_PUBSUB)
+  message(STATUS "Publish-subscribe is disabled")
+endif (ENABLE_PUBSUB)
+
 find_package(PkgConfig)
 if (PKG_CONFIG_FOUND)
   pkg_search_module(GLEW REQUIRED glew)
@@ -43,6 +57,7 @@ else (PKG_CONFIG_FOUND)
   include_directories(${GLEW_INCLUDE_DIRS})
   link_directories(${GLEW_LIBRARY_DIRS})
 endif (PKG_CONFIG_FOUND)
+
 
 find_package(ImageMagick REQUIRED COMPONENTS Magick++)
 include_directories(${ImageMagick_INCLUDE_DIRS})
@@ -67,5 +82,6 @@ target_link_libraries(
     ${GLFW_LIBRARIES}
     ${ASSIMP_LIBRARIES}
     ${EXTRA_LIBS}
+    ${ZeroMQ_LIBRARIES}
     ${ImageMagick_LIBRARIES}
 )

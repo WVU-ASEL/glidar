@@ -392,6 +392,58 @@ public:
     std::cerr << "Saved '" << filename << "'" << std::endl;
   }
 
+
+  /*
+   * Writes the point cloud to a buffer as x,y,z,i.
+   */
+  size_t write_point_cloud(float* data, unsigned int width, unsigned int height) {
+    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
+    glm::ivec4 viewport;
+    glm::dmat4 model_view_matrix, projection_matrix;
+
+    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
+    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
+    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
+
+    size_t data_count = 0;
+    double plane_difference = (far_plane - real_near_plane) / 65536.0;
+    
+
+    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
+    // forever to run.
+
+    unsigned char rgba[4*width*height];
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
+
+    for (size_t i = 0; i < height; ++i) {
+      for (size_t j = 0; j < width; ++j) {
+        size_t pos = 4*(j*height+i);
+        
+        int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
+        if (gb == 0) continue;
+        double t = gb / 65536.0;
+
+        glm::dvec3 position;
+        gluUnProject(i, width-j-1, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+
+        position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
+        
+        //position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
+
+        data[data_count]   =  (float)position[0];
+        data[data_count+1] =  (float)position[1];
+        data[data_count+2] =  (float)position[2]; //d; //(float)position[2];
+        data[data_count+3] =  rgba[pos + 0] / 256.0;
+
+        data_count += 4;
+      }
+    }
+
+    return data_count;    
+  }
+  
+
+
   /*
   * Write the current color buffer as a PCD (point cloud file) (binary non-organized version).
   */
@@ -407,45 +459,11 @@ public:
     glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
     glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
 
-    float* data   = new float[4*width*height];
-    size_t data_count = 0;
-    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
-    // forever to run.
-    for (size_t i = 0; i < height; ++i) {
-      for (size_t j = 0; j < width; ++j) {
-
-        // unproject writes into rgba
-        glm::vec4 rgba;
-
-        glReadPixels(i, height - j, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-        int gb = (rgba[1] * 65280.0) + (rgba[2] * 256.0);
-        if (gb == 0) continue;
-        double t = gb / 65536.0;
-
-        // Just out of curiosity, what happens if we calculate d ourselves?
-        double d_green = rgba[1] * 65280.0;
-        double d_blue  = rgba[2] * 256.0;
-        double d = ((d_green + d_blue) / 65536.0) * (far_plane - real_near_plane) + real_near_plane;
-
-
-        glm::dvec3 position;
-        gluUnProject(i, j, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
-
-        position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
-
-        data[data_count]   =  (float)position[0];
-        data[data_count+1] =  (float)position[1];
-        data[data_count+2] =  (float)d; //(float)position[2];
-        data[data_count+3] =  (float)rgba[0];
-
-        //std::cerr << "position[2]=" << position[2] << " versus " << d_green << " and " << d_blue << " ( g = " << rgba[1] << ", b = " << rgba[2] << " ) so " << d << std::endl;
-
-        data_count += 4;
-      }
-    }
-    //std::cerr << "far plane = " << far_plane << "\t near plane = " << real_near_plane << std::endl;
-
+    float* data       = new float[4*width*height + 4];
+    size_t data_count = write_point_cloud(data, width, height);
+    
     std::ofstream out(filename.c_str());
+    
     // Print PCD header
     out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
     out << "WIDTH " << data_count / 4 << std::endl;
@@ -463,6 +481,7 @@ public:
   float get_camera_z() const { return camera_z; }
   float get_near_plane() const { return real_near_plane; }
   float get_far_plane() const { return far_plane; }
+
 private:
   Mesh mesh;
   float scale_factor;

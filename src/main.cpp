@@ -30,8 +30,13 @@
  */
 
 #include <iostream>
+#include <sstream>
 
 #include <Magick++.h>
+
+#ifdef HAS_ZEROMQ
+# include <zmq.hpp>
+#endif
 
 #include "scene.h"
 #include "mesh.h"
@@ -60,7 +65,31 @@ int main(int argc, char** argv) {
   unsigned int width(argc > 10 ? atoi(argv[10]) : 256);
   unsigned int height(argc > 11 ? atoi(argv[11]) : 256);
   float fov(argc > 12 ? atof(argv[12]) : 20.0f);
-  std::string pcd_filename(argc > 13 ? argv[13] : "");
+  std::string filename_or_port(argc > 13 ? argv[13] : "-f");
+  
+  std::string pcd_filename(filename_or_port[1] == 'f' ? argv[14] : "");
+  int port(filename_or_port[1] == 'p' ? atoi(argv[14]) : 0);
+
+  /*
+   * If ZeroMQ is included, let's publish the data.
+   */
+#ifdef HAS_ZEROMQ
+  zmq::context_t context (1);
+  zmq::socket_t publisher (context, ZMQ_PUB);
+  if (port > 0) {
+    std::ostringstream address;
+
+    address << "tcp://*:" << port << std::flush;
+    std::string address_string = address.str();
+    
+    publisher.bind (address_string.c_str());
+
+    std::cerr << "Bound to " << address_string << std::endl;
+  } else {
+    std::cerr << "Port was " << port << '\t' << filename_or_port << std::endl;
+  }
+  
+#endif
 
   std::cerr << "Loading model "      << model_filename << std::endl;
   std::cerr << "Scaling model by "   << model_scale_factor << std::endl;
@@ -118,7 +147,10 @@ int main(int argc, char** argv) {
 
   bool save_and_quit = false;
   bool saved_now_quit= false;
+  
 
+  size_t loopcount = 0;
+  
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
@@ -172,6 +204,7 @@ int main(int argc, char** argv) {
       std::cerr << "\tfar z     : " << scene.get_far_plane() << std::endl;
       //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
       std::cerr << "\tcoords    : " << position[0] << '\t' << position[1] << '\t' << position[2] << std::endl;
+      
     }
 
     rx += model_rotate_x * delta_time;
@@ -180,6 +213,16 @@ int main(int argc, char** argv) {
 
 
     scene.render(&shader_program, fov, rx, ry, rz, true); // render with the box
+
+#ifdef HAS_ZEROMQ
+    if (loopcount % 10000 == 1 && port > 0) {
+      float* send_buffer = new float[width*height*sizeof(float)*4];
+      size_t send_buffer_size = scene.write_point_cloud(send_buffer, width, height);
+      zmq::message_t message(send_buffer, send_buffer_size, NULL, NULL);
+      publisher.send(message);
+      loopcount = 0;
+    }
+#endif
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -190,6 +233,8 @@ int main(int argc, char** argv) {
 
     save_and_quit = pcd_filename.size() > 0;
 
+    ++loopcount;
+    
   } while (!saved_now_quit && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
 
   glfwTerminate();

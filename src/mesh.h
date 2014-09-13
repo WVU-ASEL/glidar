@@ -77,7 +77,7 @@ public:
     bool ret = false;
     Assimp::Importer importer;
 
-    const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenNormals );
+    const aiScene* scene = importer.ReadFile(filename.c_str(), aiProcess_Triangulate | aiProcess_GenNormals );
 
     if (scene)    ret = init_from_scene(scene, filename);
     else std::cerr << "Error parsing '" << filename << "': " << importer.GetErrorString() << std::endl;
