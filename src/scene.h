@@ -422,6 +422,7 @@ public:
         int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
         if (gb == 0) continue;
         double t = gb / 65536.0;
+        double d = t * (far_plane - real_near_plane) + real_near_plane;
 
         glm::dvec3 position;
         gluUnProject(i, width-j-1, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
@@ -432,7 +433,7 @@ public:
 
         data[data_count]   =  (float)position[0];
         data[data_count+1] =  (float)position[1];
-        data[data_count+2] =  (float)position[2]; //d; //(float)position[2];
+        data[data_count+2] =  d; //(float)position[2];
         data[data_count+3] =  rgba[pos + 0] / 256.0;
 
         data_count += 4;
