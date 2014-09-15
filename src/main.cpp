@@ -36,6 +36,19 @@
 
 #ifdef HAS_ZEROMQ
 # include <zmq.hpp>
+
+void cpp_message_free(float* data, void* hint) {
+  delete data;
+}
+
+
+extern "C" {
+  void message_free(void* data, void* hint) {
+    cpp_message_free(static_cast<float*>(data), hint);
+  }
+}
+
+
 #endif
 
 #include "scene.h"
@@ -48,6 +61,9 @@ using std::cout;
 using std::endl;
 
 const float SPEED = 36.0f;
+
+
+
 
 
 // Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp
@@ -74,21 +90,35 @@ int main(int argc, char** argv) {
    * If ZeroMQ is included, let's publish the data.
    */
 #ifdef HAS_ZEROMQ
-  zmq::context_t context (1);
-  zmq::socket_t publisher (context, ZMQ_PUB);
-  if (port > 0) {
-    std::ostringstream address;
+  int frequency(argc > 15 ? atoi(argv[15]) : 50);
 
-    address << "tcp://*:" << port << std::flush;
-    std::string address_string = address.str();
+  //int one = 1;
+  // int backlog = 5;
+  zmq::context_t context(1);
+  zmq::socket_t publisher(context, ZMQ_PUB);
+  zmq::socket_t sync_service(context, ZMQ_REP);
     
-    publisher.bind (address_string.c_str());
+  if (port > 0) {
+    std::ostringstream publish_address, sync_address;
 
-    std::cerr << "Bound to " << address_string << std::endl;
-  } else {
-    std::cerr << "Port was " << port << '\t' << filename_or_port << std::endl;
+    publish_address << "tcp://*:" << port << std::flush;
+    sync_address    << "tcp://*:" << port+1 << std::flush;
+    std::string publish_address_string = publish_address.str(),
+                   sync_address_string = sync_address.str();
+    
+    publisher.bind(publish_address_string.c_str());
+    sync_service.bind(sync_address_string.c_str());
+
+    std::cerr << "Waiting for subscriber..." << std::flush;
+
+    char* empty_message = "";
+    zmq::message_t tmp2(empty_message, 0, NULL, NULL), tmp1;
+    // Wait for synchronization request, then send synchronization reply.
+    sync_service.recv(&tmp1);
+    sync_service.send(tmp2);
+    
+    std::cerr << "Subscriber bound to " << publish_address_string << std::endl;
   }
-  
 #endif
 
   std::cerr << "Loading model "      << model_filename << std::endl;
@@ -212,16 +242,19 @@ int main(int argc, char** argv) {
     rz += model_rotate_z * delta_time;
 
 
-    scene.render(&shader_program, fov, rx, ry, rz, true); // render with the box
 
 #ifdef HAS_ZEROMQ
-    if (loopcount % 10000 == 1 && port > 0) {
+    scene.render(&shader_program, fov, rx, ry, rz, false); // render without the box
+    if (loopcount == frequency && port > 0) {
       float* send_buffer = new float[width*height*sizeof(float)*4];
-      size_t send_buffer_size = scene.write_point_cloud(send_buffer, width, height);
-      zmq::message_t message(send_buffer, send_buffer_size, NULL, NULL);
+      size_t send_buffer_size = scene.write_point_cloud(send_buffer, width, height) * sizeof(float);
+      zmq::message_t message(send_buffer, send_buffer_size, message_free, NULL);
       publisher.send(message);
+      std::cerr << "\b\b\b\b\b" << send_buffer_size;
       loopcount = 0;
     }
+#else
+    scene.render(&shader_program, fov, rx, ry, rz, true); // render with the box
 #endif
 
     glfwSwapBuffers(window);

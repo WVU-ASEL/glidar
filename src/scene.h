@@ -394,7 +394,9 @@ public:
 
 
   /*
-   * Writes the point cloud to a buffer as x,y,z,i.
+   * Writes the point cloud to a buffer as x,y,z,i. Returns a size_t
+   * indicating the number of floating point entries written (note:
+   * not the number of bytes written).
    */
   size_t write_point_cloud(float* data, unsigned int width, unsigned int height) {
     // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
