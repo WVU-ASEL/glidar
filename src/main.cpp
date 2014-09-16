@@ -63,6 +63,29 @@ using std::endl;
 const float SPEED = 36.0f;
 
 
+#ifdef HAS_ZEROMQ
+void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port) {
+  std::ostringstream publish_address, sync_address;
+
+  publish_address << "tcp://*:" << port << std::flush;
+  sync_address    << "tcp://*:" << port+1 << std::flush;
+  std::string publish_address_string = publish_address.str(),
+                 sync_address_string = sync_address.str();
+    
+  publisher.bind(publish_address_string.c_str());
+  sync_service.bind(sync_address_string.c_str());
+
+  std::cerr << "Waiting for subscriber..." << std::flush;
+
+  char* empty_message = "";
+  zmq::message_t tmp2(empty_message, 0, NULL, NULL), tmp1;
+  // Wait for synchronization request, then send synchronization reply.
+  sync_service.recv(&tmp1);
+  sync_service.send(tmp2);
+    
+  std::cerr << "bound to " << publish_address_string << std::endl;
+}
+#endif
 
 
 
@@ -92,33 +115,13 @@ int main(int argc, char** argv) {
 #ifdef HAS_ZEROMQ
   int frequency(argc > 15 ? atoi(argv[15]) : 50);
 
-  //int one = 1;
-  // int backlog = 5;
   zmq::context_t context(1);
   zmq::socket_t publisher(context, ZMQ_PUB);
   zmq::socket_t sync_service(context, ZMQ_REP);
     
-  if (port > 0) {
-    std::ostringstream publish_address, sync_address;
-
-    publish_address << "tcp://*:" << port << std::flush;
-    sync_address    << "tcp://*:" << port+1 << std::flush;
-    std::string publish_address_string = publish_address.str(),
-                   sync_address_string = sync_address.str();
-    
-    publisher.bind(publish_address_string.c_str());
-    sync_service.bind(sync_address_string.c_str());
-
-    std::cerr << "Waiting for subscriber..." << std::flush;
-
-    char* empty_message = "";
-    zmq::message_t tmp2(empty_message, 0, NULL, NULL), tmp1;
-    // Wait for synchronization request, then send synchronization reply.
-    sync_service.recv(&tmp1);
-    sync_service.send(tmp2);
-    
-    std::cerr << "Subscriber bound to " << publish_address_string << std::endl;
-  }
+  if (port > 0)
+    sync_publish(publisher, sync_service, port);
+  
 #endif
 
   std::cerr << "Loading model "      << model_filename << std::endl;
