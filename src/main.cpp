@@ -31,6 +31,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <csignal>
 
 #include <Magick++.h>
 
@@ -64,6 +65,21 @@ const float SPEED = 36.0f;
 
 
 #ifdef HAS_ZEROMQ
+#include <csignal>
+
+static int s_interrupted = 0;
+static void s_signal_handler(int signal_value) {
+  s_interrupted = 1;
+}
+static void s_catch_signals(void) {
+  struct sigaction action;
+  action.sa_handler = s_signal_handler;
+  action.sa_flags = 0;
+  sigemptyset(&action.sa_mask);
+  sigaction(SIGINT, &action, NULL);
+  sigaction(SIGTERM, &action, NULL);
+}
+
 void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port) {
   std::ostringstream publish_address, sync_address;
 
@@ -85,8 +101,14 @@ void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int por
     
   std::cerr << "bound to " << publish_address_string << std::endl;
 }
-#endif
 
+void send_shutdown(zmq::socket_t& publisher) {
+  char bye[] = "KTHXBAI";
+  zmq::message_t kthxbai(bye, 7, NULL, NULL);
+  publisher.send(kthxbai);
+}
+
+#endif
 
 
 // Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp
@@ -122,6 +144,7 @@ int main(int argc, char** argv) {
   if (port > 0)
     sync_publish(publisher, sync_service, port);
   
+  s_catch_signals ();
 #endif
 
   std::cerr << "Loading model "      << model_filename << std::endl;
@@ -255,6 +278,13 @@ int main(int argc, char** argv) {
       publisher.send(message);
       std::cerr << "\b\b\b\b\b" << send_buffer_size;
       loopcount = 0;
+    }
+
+    if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+      std::cerr << "Interrupt received, sending shutdown signal..." << std::flush;
+      send_shutdown(publisher);
+      std::cerr << "Done." << std::endl;
+      saved_now_quit = true;
     }
 #else
     scene.render(&shader_program, fov, rx, ry, rz, true); // render with the box
