@@ -35,6 +35,8 @@
 
 #include <Magick++.h>
 
+#include <pcl/console/parse.h>
+
 #ifdef HAS_ZEROMQ
 # include <zmq.hpp>
 
@@ -80,7 +82,7 @@ static void s_catch_signals(void) {
   sigaction(SIGTERM, &action, NULL);
 }
 
-void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port) {
+void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port, size_t expected_subscribers = 1) {
   std::ostringstream publish_address, sync_address;
 
   publish_address << "tcp://*:" << port << std::flush;
@@ -91,20 +93,28 @@ void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int por
   publisher.bind(publish_address_string.c_str());
   sync_service.bind(sync_address_string.c_str());
 
-  std::cerr << "Waiting for subscriber..." << std::flush;
-
+  if (expected_subscribers == 1)
+    std::cerr << "Waiting for 1 subscriber..." << std::flush;
+  else
+    std::cerr << "Waiting for " << expected_subscribers << " subscribers..." << std::flush;
+  
   char* empty_message = "";
   zmq::message_t tmp2(empty_message, 0, NULL, NULL), tmp1;
-  // Wait for synchronization request, then send synchronization reply.
-  sync_service.recv(&tmp1);
-  sync_service.send(tmp2);
-    
-  std::cerr << "bound to " << publish_address_string << std::endl;
+  // Wait for synchronization request, then send synchronization
+  // reply.
+
+  for (size_t subscribers = 0; subscribers < expected_subscribers; ++subscribers) {
+    sync_service.recv(&tmp1);
+    sync_service.send(tmp2);
+  }
+  
+  std::cerr << "done binding to " << publish_address_string << std::endl;
 }
 
 void send_shutdown(zmq::socket_t& publisher) {
-  char bye[] = "KTHXBAI";
-  zmq::message_t kthxbai(bye, 7, NULL, NULL);
+  const char BYE[] = "KTHXBAI";
+  zmq::message_t kthxbai(7);
+  memcpy(kthxbai.data(), BYE, 7);
   publisher.send(kthxbai);
 }
 
@@ -114,35 +124,51 @@ void send_shutdown(zmq::socket_t& publisher) {
 // Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp
 int main(int argc, char** argv) {
 
-  std::string model_filename(argc > 1 ? argv[1] : "test.obj");
-  float model_scale_factor(argc > 2 ? atof(argv[2]) : 1.0);
-  float model_rotate_x(argc > 3 ? atof(argv[3]) : 0.0);
-  float model_rotate_y(argc > 4 ? atof(argv[4]) : 0.0);
-  float model_rotate_z(argc > 5 ? atof(argv[5]) : 0.0);
-  float model_init_rotate_x(argc > 6 ? atof(argv[6]) : 0.0);
-  float model_init_rotate_y(argc > 7 ? atof(argv[7]) : 0.0);
-  float model_init_rotate_z(argc > 8 ? atof(argv[8]) : 0.0);
-  float camera_z(argc > 9 ? atof(argv[9]) : 1000.0);
-  unsigned int width(argc > 10 ? atoi(argv[10]) : 256);
-  unsigned int height(argc > 11 ? atoi(argv[11]) : 256);
-  float fov(argc > 12 ? atof(argv[12]) : 20.0f);
-  std::string filename_or_port(argc > 13 ? argv[13] : "-f");
-  
-  std::string pcd_filename(filename_or_port[1] == 'f' ? argv[14] : "");
-  int port(filename_or_port[1] == 'p' ? atoi(argv[14]) : 0);
+  // Always require that the model filename be given.
+  std::string model_filename;
+  if (argc < 2) {
+    std::cerr << "Error: Expected model filename as first argument." << std::endl;
+    exit(-1);
+  } else model_filename = argv[1];
+
+  float model_scale_factor = 1.0;
+  float model_rotate_x = 0.0, model_rotate_y = 0.0, model_rotate_z = 0.0;
+  float model_init_rotate_x = 0.0, model_init_rotate_y = 0.0, model_init_rotate_z = 0.0;
+  float camera_z = 1000.0;
+  unsigned int width = 256, height = 256;
+  float fov = 20.0;
+  std::string pcd_filename;
+
+  pcl::console::parse(argc, argv, "--scale", model_scale_factor);
+  pcl::console::parse_3x_arguments(argc, argv, "--r", model_init_rotate_x, model_init_rotate_y, model_init_rotate_z);
+  pcl::console::parse_3x_arguments(argc, argv, "--dr", model_rotate_x, model_rotate_y, model_rotate_z);
+  pcl::console::parse(argc, argv, "--camera-z", camera_z);
+  pcl::console::parse(argc, argv, "--fov", fov);
+  pcl::console::parse(argc, argv, "--pcd", pcd_filename);
+
+  pcl::console::parse(argc, argv, "--width", width);
+  pcl::console::parse(argc, argv, "-w", width);
+  pcl::console::parse(argc, argv, "--height", height);
+  pcl::console::parse(argc, argv, "-h", height);
 
   /*
    * If ZeroMQ is included, let's publish the data.
    */
 #ifdef HAS_ZEROMQ
-  int frequency(argc > 15 ? atoi(argv[15]) : 50);
+  int port = 0;
+  int frequency = 15;
+  int subscribers = 1;
+  pcl::console::parse(argc, argv, "--port", port);
+  pcl::console::parse(argc, argv, "-p", port);
+  pcl::console::parse(argc, argv, "--subscribers", subscribers);
+  pcl::console::parse(argc, argv, "--pub-rate", frequency);
 
   zmq::context_t context(1);
   zmq::socket_t publisher(context, ZMQ_PUB);
   zmq::socket_t sync_service(context, ZMQ_REP);
     
   if (port > 0)
-    sync_publish(publisher, sync_service, port);
+    sync_publish(publisher, sync_service, port, subscribers);
   
   s_catch_signals ();
 #endif
@@ -280,10 +306,12 @@ int main(int argc, char** argv) {
       loopcount = 0;
     }
 
-    if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-      std::cerr << "Interrupt received, sending shutdown signal..." << std::flush;
-      send_shutdown(publisher);
-      std::cerr << "Done." << std::endl;
+    if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window)) {
+      if (port > 0) {
+	std::cerr << "Interrupt received, sending shutdown signal..." << std::flush;
+	send_shutdown(publisher);
+	std::cerr << "Done." << std::endl;
+      }
       saved_now_quit = true;
     }
 #else
@@ -300,8 +328,12 @@ int main(int argc, char** argv) {
     save_and_quit = pcd_filename.size() > 0;
 
     ++loopcount;
-    
+
+#ifdef HAS_ZEROMQ    
+  } while (!saved_now_quit);
+#else
   } while (!saved_now_quit && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
+#endif
 
   glfwTerminate();
 }

@@ -59,6 +59,12 @@ else (PKG_CONFIG_FOUND)
 endif (PKG_CONFIG_FOUND)
 
 
+find_package(PCL 1.7 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
+
 find_package(ImageMagick REQUIRED COMPONENTS Magick++)
 include_directories(${ImageMagick_INCLUDE_DIRS})
 link_directories(${ImageMagick_LIBRARY_DIRS})
@@ -81,6 +87,7 @@ target_link_libraries(
     ${GLEW_LIBRARIES}
     ${GLFW_LIBRARIES}
     ${ASSIMP_LIBRARIES}
+    ${PCL_LIBRARIES}
     ${EXTRA_LIBS}
     ${ZeroMQ_LIBRARIES}
     ${ImageMagick_LIBRARIES}
