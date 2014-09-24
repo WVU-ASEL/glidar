@@ -49,6 +49,10 @@ extern "C" {
   void message_free(void* data, void* hint) {
     cpp_message_free(static_cast<float*>(data), hint);
   }
+
+  void c_message_free(void* data, void* hint) {
+    free(data);
+  }
 }
 
 
@@ -137,6 +141,7 @@ int main(int argc, char** argv) {
   float camera_z = 1000.0;
   unsigned int width = 256, height = 256;
   float fov = 20.0;
+  unsigned long timestamp = 0;
   std::string pcd_filename;
 
   pcl::console::parse(argc, argv, "--scale", model_scale_factor);
@@ -297,10 +302,15 @@ int main(int argc, char** argv) {
 
 #ifdef HAS_ZEROMQ
     scene.render(&shader_program, fov, rx, ry, rz, false); // render without the box
+
     if (loopcount == frequency && port > 0) {
-      float* send_buffer = new float[width*height*sizeof(float)*4];
-      size_t send_buffer_size = scene.write_point_cloud(send_buffer, width, height) * sizeof(float);
-      zmq::message_t message(send_buffer, send_buffer_size, message_free, NULL);
+      timestamp += frequency;
+
+      void* send_buffer = malloc(sizeof(unsigned long) + width*height*sizeof(float)*4);
+      float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long)));
+      size_t send_buffer_size = sizeof(unsigned long) + scene.write_point_cloud(cloud_buffer, width, height) * sizeof(float);
+      memcpy(send_buffer, &timestamp, sizeof(unsigned long));
+      zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
       publisher.send(message);
       std::cerr << "\b\b\b\b\b" << send_buffer_size;
       loopcount = 0;
