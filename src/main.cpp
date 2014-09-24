@@ -98,9 +98,9 @@ void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int por
   sync_service.bind(sync_address_string.c_str());
 
   if (expected_subscribers == 1)
-    std::cerr << "Waiting for 1 subscriber..." << std::flush;
+    std::cerr << "Waiting for 1 subscriber (" << port+1 << ")..." << std::flush;
   else
-    std::cerr << "Waiting for " << expected_subscribers << " subscribers..." << std::flush;
+    std::cerr << "Waiting for " << expected_subscribers << " subscribers (" << port+1 << ")..." << std::flush;
   
   char* empty_message = "";
   zmq::message_t tmp2(empty_message, 0, NULL, NULL), tmp1;
@@ -109,7 +109,9 @@ void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int por
 
   for (size_t subscribers = 0; subscribers < expected_subscribers; ++subscribers) {
     sync_service.recv(&tmp1);
+    std::cerr << 'r';
     sync_service.send(tmp2);
+    std::cerr << 's';
   }
   
   std::cerr << "done binding to " << publish_address_string << std::endl;
@@ -237,6 +239,9 @@ int main(int argc, char** argv) {
   
 
   size_t loopcount = 0;
+  unsigned short backspaces = 0;
+ 
+  std::cerr << "Maximum buffer size: " << width * height * 4 * sizeof(float) << std::endl;
   
   do {
 
@@ -304,7 +309,7 @@ int main(int argc, char** argv) {
     scene.render(&shader_program, fov, rx, ry, rz, false); // render without the box
 
     if (loopcount == frequency && port > 0) {
-      timestamp += frequency;
+      ++timestamp;
 
       void* send_buffer = malloc(sizeof(unsigned long) + width*height*sizeof(float)*4);
       float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long)));
@@ -312,8 +317,18 @@ int main(int argc, char** argv) {
       memcpy(send_buffer, &timestamp, sizeof(unsigned long));
       zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
       publisher.send(message);
-      std::cerr << "\b\b\b\b\b" << send_buffer_size;
+
+      std::ostringstream length_stream;
+      length_stream << send_buffer_size;
+      std::string length = length_stream.str();
+
+      // Delete the old length
+      for (unsigned short b = 0; b < backspaces; ++b)
+	std::cerr << '\b';
+      std::cerr << length;
+
       loopcount = 0;
+      backspaces = length.size();
     }
 
     if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window)) {

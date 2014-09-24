@@ -410,10 +410,6 @@ public:
     size_t data_count = 0;
     double plane_difference = (far_plane - real_near_plane) / 65536.0;
     
-
-    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
-    // forever to run.
-
     unsigned char rgba[4*width*height];
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
 
@@ -431,8 +427,6 @@ public:
 
         position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
         
-        //position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
-
         data[data_count]   =  (float)position[0];
         data[data_count+1] =  (float)position[1];
         data[data_count+2] =  d; //(float)position[2];
