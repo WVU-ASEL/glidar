@@ -335,7 +335,11 @@ int main(int argc, char** argv) {
     if (loopcount == frequency && port) {
       ++timestamp;
 
-      // indicate that we're sending a point cloud
+      // First transmit the true pose.
+      Eigen::Matrix4f pose = scene.get_pose(rx, ry, rz);
+      send_pose(publisher, pose, timestamp);
+
+      // Now indicate that we're sending a point cloud
       const char TYPE = 'c';
 
       void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
@@ -357,12 +361,7 @@ int main(int argc, char** argv) {
       std::cerr << length;
 
       loopcount = 0;
-      backspaces = length.size();
-
-      // Also transmit the true pose.
-      Eigen::Matrix4f pose = scene.get_pose(rx, ry, rz);
-      send_pose(publisher, pose, timestamp);
-      
+      backspaces = length.size();      
     }
 
     if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window)) {
