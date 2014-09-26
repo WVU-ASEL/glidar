@@ -57,7 +57,7 @@ extern "C" {
 }
 
 void send_pose(zmq::socket_t& publisher, const Eigen::Matrix4f& pose, const unsigned long& timestamp) {
-  size_t size = sizeof(unsigned long) + 16 * sizeof(float);
+  size_t size = sizeof(char) + sizeof(unsigned long) + 16 * sizeof(float);
   void* send_buffer = malloc(size);
   void* timestamp_buffer = static_cast<void*>(static_cast<char*>(send_buffer) + 1);
   void* pose_buffer = static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + 1);
