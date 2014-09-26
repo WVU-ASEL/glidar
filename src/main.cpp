@@ -39,6 +39,7 @@
 
 #ifdef HAS_ZEROMQ
 # include <zmq.hpp>
+# include <Eigen/Dense>
 
 void cpp_message_free(float* data, void* hint) {
   delete data;
@@ -55,6 +56,21 @@ extern "C" {
   }
 }
 
+void send_pose(zmq::socket_t& publisher, const Eigen::Matrix4f& pose, const unsigned long& timestamp) {
+  size_t size = sizeof(unsigned long) + 16 * sizeof(float);
+  void* send_buffer = malloc(size);
+  void* timestamp_buffer = static_cast<void*>(static_cast<char*>(send_buffer) + 1);
+  void* pose_buffer = static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + 1);
+
+  const char TYPE = 'p';
+
+  memcpy(send_buffer, &TYPE, sizeof(char));
+  memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
+  memcpy(pose_buffer, pose.data(), 16 * sizeof(float));
+
+  zmq::message_t message(send_buffer, size, c_message_free, NULL);
+  publisher.send(message);
+}
 
 #endif
 
@@ -113,15 +129,22 @@ void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int por
     sync_service.send(tmp2);
     std::cerr << 's';
   }
+
+  sync_service.disconnect(sync_address_string.c_str());
   
   std::cerr << "done binding to " << publish_address_string << std::endl;
 }
 
 void send_shutdown(zmq::socket_t& publisher) {
-  const char BYE[] = "KTHXBAI";
-  zmq::message_t kthxbai(7);
-  memcpy(kthxbai.data(), BYE, 7);
-  publisher.send(kthxbai);
+  const char pBYE[] = "pKTHXBAI";
+  zmq::message_t pkthxbai(8);
+  memcpy(pkthxbai.data(), pBYE, 8);
+  publisher.send(pkthxbai);
+
+  const char cBYE[] = "cKTHXBAI";
+  zmq::message_t ckthxbai(8);
+  memcpy(ckthxbai.data(), cBYE, 8);
+  publisher.send(ckthxbai);
 }
 
 #endif
@@ -172,9 +195,10 @@ int main(int argc, char** argv) {
 
   zmq::context_t context(1);
   zmq::socket_t publisher(context, ZMQ_PUB);
+  zmq::socket_t truth_publisher(context, ZMQ_PUB);
   zmq::socket_t sync_service(context, ZMQ_REP);
     
-  if (port > 0)
+  if (port)
     sync_publish(publisher, sync_service, port, subscribers);
   
   s_catch_signals ();
@@ -308,13 +332,18 @@ int main(int argc, char** argv) {
 #ifdef HAS_ZEROMQ
     scene.render(&shader_program, fov, rx, ry, rz, false); // render without the box
 
-    if (loopcount == frequency && port > 0) {
+    if (loopcount == frequency && port) {
       ++timestamp;
 
-      void* send_buffer = malloc(sizeof(unsigned long) + width*height*sizeof(float)*4);
-      float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long)));
-      size_t send_buffer_size = sizeof(unsigned long) + scene.write_point_cloud(cloud_buffer, width, height) * sizeof(float);
-      memcpy(send_buffer, &timestamp, sizeof(unsigned long));
+      // indicate that we're sending a point cloud
+      const char TYPE = 'c';
+
+      void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
+      void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
+      float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
+      size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) + scene.write_point_cloud(cloud_buffer, width, height) * sizeof(float);
+      memcpy(send_buffer, &TYPE, sizeof(char));
+      memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
       zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
       publisher.send(message);
 
@@ -329,6 +358,11 @@ int main(int argc, char** argv) {
 
       loopcount = 0;
       backspaces = length.size();
+
+      // Also transmit the true pose.
+      Eigen::Matrix4f pose = scene.get_pose(rx, ry, rz);
+      send_pose(publisher, pose, timestamp);
+      
     }
 
     if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window)) {

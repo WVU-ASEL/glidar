@@ -58,6 +58,10 @@ else (PKG_CONFIG_FOUND)
   link_directories(${GLEW_LIBRARY_DIRS})
 endif (PKG_CONFIG_FOUND)
 
+# Eigen (required)
+include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS})
+add_definitions(-DEIGEN_USE_NEW_STDVECTOR
+                -DEIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET)
 
 find_package(PCL 1.7 REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})

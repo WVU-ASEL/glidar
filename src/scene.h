@@ -300,6 +300,35 @@ public:
 
 
   /*
+   * Return the transformation metadata as a 4x4 homogeneous matrix.
+   */
+  Eigen::Matrix4f get_pose(float rx, float ry, float rz) {
+    using Eigen::Vector3f;
+    using Eigen::Affine;
+    using Eigen::Transform;
+    using Eigen::Translation3f;
+    using Eigen::AngleAxisf;
+    using Eigen::Matrix4f;
+    using Eigen::Scaling;
+
+    float d = get_camera_z();
+   
+    AngleAxisf model_rx(rx * M_PI / 180.0, Vector3f::UnitX());
+    AngleAxisf model_ry(ry * M_PI / 180.0, Vector3f::UnitY());
+    AngleAxisf model_rz(rz * M_PI / 180.0, Vector3f::UnitZ());
+
+    Translation3f model_to_camera_translate(Vector3f(0.0f, 0.0f, -d));
+    AngleAxisf    model_to_camera_rotate(M_PI, Vector3f::UnitY());
+  
+    Eigen::Transform<float,3,Affine> result;
+    result =  model_to_camera_rotate * model_to_camera_translate *
+              model_rz * model_ry * model_rx;
+  
+    return result.matrix();
+  }
+
+
+  /*
    * Write the current color buffer as a PCD (point cloud file) (ASCII version).
    */
   void save_point_cloud_ascii(const std::string& basename, unsigned int width, unsigned int height) {
