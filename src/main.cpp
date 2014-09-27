@@ -76,6 +76,7 @@ void send_pose(zmq::socket_t& publisher, const Eigen::Matrix4f& pose, const unsi
 
 #include "scene.h"
 #include "mesh.h"
+#include "service/pose_logger.h"
 
 using namespace glm;
 
@@ -197,6 +198,7 @@ int main(int argc, char** argv) {
   zmq::socket_t publisher(context, ZMQ_PUB);
   zmq::socket_t truth_publisher(context, ZMQ_PUB);
   zmq::socket_t sync_service(context, ZMQ_REP);
+  PoseLogger logger("sensor.pose");
     
   if (port)
     sync_publish(publisher, sync_service, port, subscribers);
@@ -335,8 +337,12 @@ int main(int argc, char** argv) {
     if (loopcount == frequency && port) {
       ++timestamp;
 
-      // First transmit the true pose.
       Eigen::Matrix4f pose = scene.get_pose(rx, ry, rz);
+
+      // Write timestamp and pose to the logger.
+      logger.log(timestamp, pose);
+
+      // Transmit the true pose.
       send_pose(publisher, pose, timestamp);
 
       // Now indicate that we're sending a point cloud
@@ -394,4 +400,6 @@ int main(int argc, char** argv) {
 #endif
 
   glfwTerminate();
+
+  return 0;
 }

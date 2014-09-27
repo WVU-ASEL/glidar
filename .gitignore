@@ -9,6 +9,14 @@ __MACOSX/
 build/
 a.out
 *.o
-lidargl
 *.obj
 *.pcd
+*.pose
+*.transform
+*.ply
+*.cam
+*.rb~
+*.txt~
+*.kml
+*.tif
+*.TIF
