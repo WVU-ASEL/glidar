@@ -30,6 +30,9 @@ include_directories(${ASSIMP_INCLUDE_DIRS})
 link_directories(${ASSIMP_LIBRARY_DIRS})
 add_definitions(${ASSIMP_DEFINITIONS})
 
+find_package(FLANN)
+include_directories(${FLANN_INCLUDE_DIRS})
+
 find_package(GLFW 3 REQUIRED)
 include_directories(${GLFW_INCLUDE_DIRS})
 link_directories(${GLFW_LIBRARY_DIRS})
@@ -95,4 +98,5 @@ target_link_libraries(
     ${EXTRA_LIBS}
     ${ZeroMQ_LIBRARIES}
     ${ImageMagick_LIBRARIES}
+    ${FLANN_LIBRARIES}
 )

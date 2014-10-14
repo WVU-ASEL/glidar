@@ -27,10 +27,15 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include <flann/flann.hpp>
+#include <flann/algorithms/kdtree_single_index.h>
+
 #define INVALID_OGL_VALUE 0xFFFFFFFF
 //#define AI_CONFIG_PP_RVC_FLAGS  aiComponent_NORMALS
 
 #include "texture.h"
+
+const size_t MAX_LEAF_SIZE = 15;
 
 
 // Use this struct to represent vertex coordinates, texture coordinates, and the normal coordinates for this vertex.
@@ -46,6 +51,10 @@ struct Vertex
   Vertex(const glm::vec3& pos_, const glm::vec2& dtex_, const glm::vec2& stex_, const glm::vec3& normal_)
   : pos(pos_), diffuse_tex(dtex_), specular_tex(stex_), normal(normal_)
   {  }
+
+  float x() const { return pos.x; }
+  float y() const { return pos.y; }
+  float z() const { return pos.z; }
 };
 
 
@@ -62,7 +71,9 @@ public:
 
   Mesh() : min_extremities(0.0f,0.0f,0.0f), max_extremities(0.0f,0.0f,0.0f) { }
 
-  ~Mesh() { clear(); }
+  ~Mesh() {
+    clear();
+  }
 
 
   glm::vec3 dimensions() const {
@@ -182,35 +193,58 @@ private:
 
 #define INVALID_MATERIAL 0xFFFFFFFF
 
-  struct MeshEntry {
-      MeshEntry() {
-        vb = INVALID_OGL_VALUE;
-        ib = INVALID_OGL_VALUE;
-        num_indices = 0;
-        material_index = INVALID_MATERIAL;
+  class MeshEntry {
+  public:
+    MeshEntry()
+      : vb(INVALID_OGL_VALUE), 
+        ib(INVALID_OGL_VALUE), 
+        num_indices(0),
+        material_index(INVALID_MATERIAL),
+        kdtree(NULL)
+    { }
+
+    ~MeshEntry() {
+      if (vb != INVALID_OGL_VALUE) glDeleteBuffers(1, &vb);
+      if (ib != INVALID_OGL_VALUE) glDeleteBuffers(1, &ib);
+
+      // Delete the space allocated within xyz, then delete xyz container, then delete the kdtree.
+      delete [] xyz->ptr();
+      delete xyz;
+      delete kdtree;
+    }
+
+    void init(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices) {
+      num_indices = indices.size();
+
+      glGenBuffers(1, &vb);
+      glBindBuffer(GL_ARRAY_BUFFER, vb);
+      glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+
+      glGenBuffers(1, &ib);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * num_indices, &indices[0], GL_STATIC_DRAW);
+
+      // Copy the xyz coordinates from vertices into the xyz array.
+      float* xyz_data = new float[vertices.size() * 3];
+      for (size_t i = 0; i < vertices.size(); ++i) {
+	xyz_data[i*3+0] = vertices[i].x();
+	xyz_data[i*3+1] = vertices[i].y();
+        xyz_data[i*3+2] = vertices[i].z();
       }
+      // Create the matrix
+      xyz = new flann::Matrix<float>(xyz_data, vertices.size(), 3);
 
-      ~MeshEntry() {
-        if (vb != INVALID_OGL_VALUE) glDeleteBuffers(1, &vb);
-        if (ib != INVALID_OGL_VALUE) glDeleteBuffers(1, &ib);
-      }
+      // Create a k-D tree, which we will use to find the near plane no matter how the object is rotated.
+      kdtree = new flann::KDTreeSingleIndex<flann::L2_Simple<float> >(*xyz, flann::KDTreeSingleIndexParams(MAX_LEAF_SIZE));
+    }
 
-      void init(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices) {
-        num_indices = indices.size();
+    GLuint vb;
+    GLuint ib;
+    size_t num_indices;
+    size_t material_index;
 
-        glGenBuffers(1, &vb);
-        glBindBuffer(GL_ARRAY_BUFFER, vb);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
-
-        glGenBuffers(1, &ib);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * num_indices, &indices[0], GL_STATIC_DRAW);
-      }
-
-      GLuint vb;
-      GLuint ib;
-      size_t num_indices;
-      size_t material_index;
+    flann::Matrix<float>* xyz;
+    flann::KDTreeSingleIndex<flann::L2_Simple<float> >* kdtree;
   };
 
 

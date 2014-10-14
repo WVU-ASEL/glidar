@@ -75,6 +75,10 @@ public:
     std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
     //std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
+    // If the change in camera position is too great, reduce that change.
+    while (z >= real_near_plane)
+      z /= 2.0;
+
     camera_z -= z;
     ideal_near_plane -= z;
     real_near_plane = std::max(MIN_NEAR_PLANE, ideal_near_plane);
