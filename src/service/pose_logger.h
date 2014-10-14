@@ -50,8 +50,8 @@ public:
     out.close();
   }
 
-  void log(const timestamp_t& timestamp, const Eigen::Matrix4f& pose) {
-    out << timestamp << '\t' << pose.format(pose_format) << '\n';
+  void log(const timestamp_t& timestamp, const Eigen::Matrix4f& pose, float score = std::numeric_limits<float>::infinity()) {
+    out << timestamp << '\t' << pose.format(pose_format) << '\t' << score << '\n';
   }
 
   void close() {
