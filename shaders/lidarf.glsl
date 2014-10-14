@@ -75,11 +75,11 @@ void main() {
   float dist = length(light_dir);
 
   vec3 n = normalize(normal0);
-  float n_dot_l = max(dot(n, normalize(light_dir)), 0.0);
+  float n_dot_hv = max(dot(n, normalize(half_vector)), 0.0);
 
   color = GLOBAL_AMBIENT * ambient; //vec4(color.r + GLOBAL_AMBIENT * ambient.r, 0.0, 0.0, 1.0);
 
-  if (n_dot_l > 0.0) {
+  if (n_dot_hv > 0.0) {
 
     // Calculate the angle w.r.t. the spotlight.
     float spot_effect = dot(normalize(spot_dir), normalize(light_dir));
@@ -87,10 +87,7 @@ void main() {
     if (spot_effect > gl_LightSource[0].spotCosCutoff) {
       float att = 1.0 / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
-      color += att * (diffuse_color * n_dot_l + ambient);
-
-      vec3 half_v = normalize(half_vector);
-      float n_dot_hv = max(dot(n,half_v), 0.0);
+      color += att * (diffuse_color * n_dot_hv + ambient);
       color += att * spec_color * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
       //color.r *= rand_positive(gl_FragCoord.xy);

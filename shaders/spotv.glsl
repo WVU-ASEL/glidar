@@ -55,7 +55,11 @@ void main() {
   ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
   vec3 ec_light_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
 
-  half_vector = normalize(ec_light_dir + ec_light_dir); //gl_LightSource[0].halfVector.xyz;
+  // Normally in a shading model, we use the half_vector to deal with the difference between
+  // the light and the viewer. For most 3D sensors, however, we assume the light source and
+  // the viewer are in the same location.
+  half_vector = normalize(ec_light_dir);
+  //half_vector = normalize(ec_light_dir + ec_light_dir);
 
   gl_TexCoord[0].st = diffuse_tex;
   gl_TexCoord[1].st = specular_tex;
