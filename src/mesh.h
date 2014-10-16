@@ -23,6 +23,8 @@
 #include <vector>
 #include <iostream>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp> // glm::value_ptr
+#include <glm/gtx/projection.hpp> // glm::proj
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -165,6 +167,43 @@ public:
     return centroid_;
   }
 
+  /*
+   * Find the nearest point among all the meshes to some point p. Returns a distance,
+   * and the located point's xyz is also given in the second parameter.
+   */
+  float nearest_point(const glm::vec4& p, glm::vec4& result) const {
+    float d = entries[0].nearest_point(p, result);
+
+    for (size_t i = 1; i < entries.size(); ++i) {
+      glm::vec4 tmp_result;
+      float tmp_distance;
+
+      tmp_distance = entries[i].nearest_point(p, tmp_result);
+
+      if (tmp_distance < d) {
+	d = tmp_distance;
+	result = tmp_result;
+      }
+    }
+
+    return d;
+  }
+
+  /*
+   * Find the location of the near plane, given some camera position/direction in object coordinates.
+   */
+  float near_plane_bound(const glm::vec4& camera_pos, const glm::vec4& camera_dir) const {
+    glm::vec4 nearest;
+
+    // Find the nearest point in the mesh.
+    nearest_point(camera_pos, nearest);
+    nearest.w = 0.0;
+
+    glm::vec4 camera_to_nearest_point = camera_pos - nearest;
+    glm::vec4 camera_to_near_plane = glm::proj(camera_to_nearest_point, camera_dir);
+    return glm::length(camera_to_near_plane);
+  }
+
 private:
   void init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index);
   bool init_materials(const aiScene* scene, const std::string& filename);
@@ -200,7 +239,12 @@ private:
         ib(INVALID_OGL_VALUE), 
         num_indices(0),
         material_index(INVALID_MATERIAL),
-        kdtree(NULL)
+        xyz_data(NULL),
+        xyz(NULL),
+        kdtree(NULL),
+        flann_epsilon(0.0),
+        flann_sorted(true),
+        flann_checks(32)
     { }
 
     ~MeshEntry() {
@@ -208,7 +252,7 @@ private:
       if (ib != INVALID_OGL_VALUE) glDeleteBuffers(1, &ib);
 
       // Delete the space allocated within xyz, then delete xyz container, then delete the kdtree.
-      delete [] xyz->ptr();
+      delete [] xyz_data;
       delete xyz;
       delete kdtree;
     }
@@ -225,7 +269,7 @@ private:
       glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * num_indices, &indices[0], GL_STATIC_DRAW);
 
       // Copy the xyz coordinates from vertices into the xyz array.
-      float* xyz_data = new float[vertices.size() * 3];
+      xyz_data = new float[vertices.size() * 3];
       for (size_t i = 0; i < vertices.size(); ++i) {
 	xyz_data[i*3+0] = vertices[i].x();
 	xyz_data[i*3+1] = vertices[i].y();
@@ -238,13 +282,42 @@ private:
       kdtree = new flann::KDTreeSingleIndex<flann::L2_Simple<float> >(*xyz, flann::KDTreeSingleIndexParams(MAX_LEAF_SIZE));
     }
 
+    float nearest_point(const glm::vec4& p, glm::vec4& result) const {
+      flann::Matrix<float> query(const_cast<float*>(static_cast<const float*>(glm::value_ptr(p))), 1, 3);
+
+      // Result matrices
+      int index;
+      float distance;
+      flann::Matrix<int> indices(&index, 1, 1);
+      flann::Matrix<float> distances(&distance, 1, 1);
+
+      flann::SearchParams search_parameters;
+      search_parameters.eps = flann_epsilon;
+      search_parameters.sorted = flann_sorted;
+      search_parameters.checks = flann_checks;
+
+      kdtree->buildIndex();
+      kdtree->knnSearch(query, indices, distances, 1, search_parameters);
+
+      result.x = xyz_data[index*3+0];
+      result.y = xyz_data[index*3+1];
+      result.z = xyz_data[index*3+2];
+      result.w = 0.0;
+
+      return distance;
+    }
+
     GLuint vb;
     GLuint ib;
     size_t num_indices;
     size_t material_index;
 
+    float* xyz_data;
     flann::Matrix<float>* xyz;
     flann::KDTreeSingleIndex<flann::L2_Simple<float> >* kdtree;
+    float flann_epsilon;
+    bool  flann_sorted;
+    int   flann_checks;
   };
 
 

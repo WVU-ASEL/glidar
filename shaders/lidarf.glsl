@@ -40,7 +40,7 @@ varying vec4 specular;
 varying vec3 half_vector;
 varying vec3 ec_pos;
 
-uniform float camera_z;
+//uniform vec4 camera_pos;
 uniform float far_plane;
 uniform float near_plane;
 uniform mat4 LightModelViewMatrix;

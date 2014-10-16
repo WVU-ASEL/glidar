@@ -54,10 +54,10 @@ class Scene {
 public:
   Scene(const std::string& filename, float scale_factor_, float camera_z_)
   : scale_factor(scale_factor_),
-    camera_z(camera_z_),
-    ideal_near_plane(camera_z-BOX_HALF_DIAGONAL),
-    real_near_plane(std::max(MIN_NEAR_PLANE, ideal_near_plane)),
-    far_plane(camera_z+BOX_HALF_DIAGONAL)
+    camera_pos(0.0, 0.0, camera_z_, 0.0),
+    camera_dir(0.0, 0.0, -1.0, 0.0),
+    real_near_plane(std::max(MIN_NEAR_PLANE, camera_z_-BOX_HALF_DIAGONAL)),
+    far_plane(camera_z_+BOX_HALF_DIAGONAL)
   {
     mesh.load_mesh(filename);
 
@@ -72,14 +72,14 @@ public:
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    std::cerr << "Position is (0,0," << camera_z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
+    std::cerr << "Position is (" << camera_pos.x << "," << camera_pos.y << "," << camera_pos.z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
     //std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
     // If the change in camera position is too great, reduce that change.
     while (z >= real_near_plane)
       z /= 2.0;
 
-    camera_z -= z;
+    camera_pos.z -= z;
     ideal_near_plane -= z;
     real_near_plane = std::max(MIN_NEAR_PLANE, ideal_near_plane);
     far_plane -= z;
@@ -139,7 +139,7 @@ public:
     gluUnProject(x, y, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
     std::cerr << position[0] << ',' << position[1] << ',' << position[2] << '\t';
-    position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
+    position = glm::dvec3(camera_pos) - position;
     std::cerr << position[0] << ',' << position[1] << ',' << position[2] << '\n';
 
 
@@ -212,7 +212,7 @@ public:
     projection_setup(fov);
 
     // clear window with the current clearing color, and clear the depth buffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Setup model view matrix: All future transformations will affect our models (what we draw).
     glMatrixMode(GL_MODELVIEW);
@@ -229,21 +229,21 @@ public:
     glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.00000001f);
 
 
-    float light_matrix[] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    glGetFloatv(GL_MODELVIEW_MATRIX, light_matrix);
+    glm::mat4 model_view;
+    glGetFloatv(GL_MODELVIEW_MATRIX, static_cast<GLfloat*>(glm::value_ptr(model_view)));
+
+    glm::mat4 light_matrix = model_view;
     GLint light_matrix_id = glGetUniformLocation(shader_program->id(), "LightModelViewMatrix");
-    glUniformMatrix4fv(light_matrix_id, 1, false, light_matrix);
+    glUniformMatrix4fv(light_matrix_id, 1, false, static_cast<GLfloat*>(glm::value_ptr(light_matrix)));
 
-/*    float light_diffuse[]  = {1.0, 1.0, 1.0, 1.0};
-    float light_ambient[]  = {1.0, 1.0, 1.0, 1.0};
-    float light_specular[]  = {1.0, 1.0, 1.0, 1.0};
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular); */
+    glTranslatef(-camera_pos.x, -camera_pos.y, -camera_pos.z);
 
-
-    glTranslatef(0.0, 0.0, -camera_z);
-    //glRotatef(std::atan(-CAMERA_Y/camera_z)*RADIANS_PER_DEGREE, 1, 0, 0); // This would be used to move the camera slightly away from the laser source
+    // Get the camera position in object coordinates so we can find the near plane.
+    glm::mat4 inverse_model_view = glm::inverse(model_view);
+    glm::vec4 camera_pos_oc = inverse_model_view * camera_pos;
+    glm::vec4 camera_dir_oc = inverse_model_view * camera_dir;
+    float near_plane_bound = mesh.near_plane_bound(camera_pos_oc, camera_dir_oc);
+    real_near_plane = near_plane_bound*0.99;
 
     // For debugging purposes, let's make sure we can see a box.
     glUseProgramObjectARB(0);
@@ -252,13 +252,9 @@ public:
 
     glPushMatrix();
 
-
-
-    GLint camera_z_id = glGetUniformLocation(shader_program->id(), "camera_z");
     GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
     GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
 
-    glUniform1fv(camera_z_id, 1, &camera_z);
     glUniform1fv(far_plane_id, 1, &far_plane);
     glUniform1fv(near_plane_id, 1, &real_near_plane);
 
@@ -314,14 +310,12 @@ public:
     using Eigen::AngleAxisf;
     using Eigen::Matrix4f;
     using Eigen::Scaling;
-
-    float d = get_camera_z();
    
     AngleAxisf model_rx(rx * M_PI / 180.0, Vector3f::UnitX());
     AngleAxisf model_ry(ry * M_PI / 180.0, Vector3f::UnitY());
     AngleAxisf model_rz(rz * M_PI / 180.0, Vector3f::UnitZ());
 
-    Translation3f model_to_camera_translate(Vector3f(0.0f, 0.0f, -d));
+    Translation3f model_to_camera_translate(Vector3f(camera_pos.x, camera_pos.y, -camera_pos.z));
     AngleAxisf    model_to_camera_rotate(M_PI, Vector3f::UnitY());
   
     Eigen::Transform<float,3,Affine> result;
@@ -458,7 +452,7 @@ public:
         glm::dvec3 position;
         gluUnProject(i, width-j-1, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
-        position = glm::dvec3(0.0, CAMERA_Y, camera_z) - position;
+        position = glm::dvec3(camera_pos) - position;
         
         data[data_count]   =  (float)position[0];
         data[data_count+1] =  (float)position[1];
@@ -508,14 +502,18 @@ public:
     std::cerr << "Saved '" << filename << "'" << std::endl;
   }
 
-  float get_camera_z() const { return camera_z; }
+  float get_camera_z() const { return camera_pos.z; }
+  glm::vec4 get_camera_pos() const { return camera_pos; }
+  glm::vec4 get_camera_dir() const { return camera_dir; }
   float get_near_plane() const { return real_near_plane; }
   float get_far_plane() const { return far_plane; }
 
 private:
   Mesh mesh;
   float scale_factor;
-  GLfloat camera_z;
+
+  glm::vec4 camera_pos;
+  glm::vec4 camera_dir;
   GLfloat ideal_near_plane;
   GLfloat real_near_plane;
   GLfloat far_plane;
