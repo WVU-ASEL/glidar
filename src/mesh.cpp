@@ -157,8 +157,13 @@ void Mesh::init_mesh(const aiScene* scene, const aiMesh* mesh, size_t index) {
     indices.push_back(face.mIndices[2]);
   }
 
+
   // Create index buffer.
   entries[index].init(vertices, indices);
+
+  //glm::vec3 diff = max_extremities - min_extremities;
+  //entries[index].flann_epsilon = std::abs(max_extremities.x - min_extremities.x) / 10.0;
+  //std::cerr << "kdtree eps = " << entries[index].flann_epsilon << std::endl;
 }
 
 

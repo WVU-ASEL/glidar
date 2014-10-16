@@ -251,11 +251,11 @@ int main(int argc, char** argv) {
   Shader shader_program("shaders/spotv.glsl", "shaders/lidarf.glsl");
   //Shader shader_program("lidarv.glsl", "lidarf.glsl");
 
-  scene.projection_setup(fov);
-
   float rx = model_init_rotate_x,
         ry = model_init_rotate_y,
         rz = model_init_rotate_z;
+
+  scene.projection_setup(fov, rx, ry, rz);
 
   bool mouse_button_pressed = false;
   bool s_key_pressed = false;

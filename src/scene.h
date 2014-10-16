@@ -45,7 +45,7 @@
 const float ASPECT_RATIO = 1.0;
 const float CAMERA_Y     = 0.05;
 const unsigned int BOX_HALF_DIAGONAL = 174;
-const float MIN_NEAR_PLANE = 0.01;
+const GLfloat MIN_NEAR_PLANE = 0.01;
 
 const double RADIANS_PER_DEGREE = M_PI / 180.0;
 
@@ -56,6 +56,7 @@ public:
   : scale_factor(scale_factor_),
     camera_pos(0.0, 0.0, camera_z_, 0.0),
     camera_dir(0.0, 0.0, -1.0, 0.0),
+    near_plane_bound(camera_z_ - BOX_HALF_DIAGONAL),
     real_near_plane(std::max(MIN_NEAR_PLANE, camera_z_-BOX_HALF_DIAGONAL)),
     far_plane(camera_z_+BOX_HALF_DIAGONAL)
   {
@@ -80,13 +81,13 @@ public:
       z /= 2.0;
 
     camera_pos.z -= z;
-    ideal_near_plane -= z;
-    real_near_plane = std::max(MIN_NEAR_PLANE, ideal_near_plane);
+    near_plane_bound -= z;
+    real_near_plane = std::max(MIN_NEAR_PLANE, near_plane_bound * 0.99f);
     far_plane -= z;
   }
 
 
-  void projection_setup(float fov) {
+  void projection_setup(float fov, float rx, float ry, float rz) {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     glEnable(GL_LIGHTING);
@@ -109,6 +110,25 @@ public:
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+
+
+    // Figure out where the near plane belongs.
+    //glGetFloatv(GL_MODELVIEW_MATRIX, static_cast<GLfloat*>(glm::value_ptr(model_view)));
+    glm::mat4 model_view = get_model_view_matrix(rx, ry, rz);
+    // Get the camera position in object coordinates so we can find the near plane.
+    glm::mat4 inverse_model_view = glm::inverse(model_view);
+    glm::vec4 camera_pos_oc = inverse_model_view * camera_pos;
+    glm::vec4 camera_dir_oc = inverse_model_view * camera_dir;
+
+    glm::vec4 nearest_point_oc, nearest_point;
+    mesh.nearest_point(camera_pos_oc, nearest_point_oc);
+    nearest_point = model_view * nearest_point_oc;
+
+    //std::cerr << "Nearest point in camera coordinates: " << nearest_point.x << "," << nearest_point.y << "," << nearest_point.z << std::endl;
+    
+    near_plane_bound = mesh.near_plane_bound(camera_pos_oc, camera_dir_oc);
+    real_near_plane = near_plane_bound*0.99;
+
 
     gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
   }
@@ -164,7 +184,7 @@ public:
   /*
    * Draws a simple box in green, blue, and red around the origin with dimensions 200 x 200 x 200.
    */
-  void render_box() {
+  void render_box(float r = 100.0) {
     glPushMatrix();
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D); // Probably has no meaning since we're using shaders.
@@ -174,33 +194,33 @@ public:
 
     glColor4f(0.0, 1.0, 0.0, 1.0);
     glBegin(GL_LINE_LOOP);
-    glVertex3f(-100.0, -100.0, -100.0);
-    glVertex3f(100.0,  -100.0, -100.0);
-    glVertex3f(100.0,   100.0, -100.0);
-    glVertex3f(-100.0,  100.0, -100.0);
+    glVertex3f(-r, -r, -r);
+    glVertex3f(r,  -r, -r);
+    glVertex3f(r,   r, -r);
+    glVertex3f(-r,  r, -r);
     glEnd();
 
     glColor4f(1.0, 0.0, 0.0, 1.0);
     glBegin(GL_LINE_LOOP);
-    glVertex3f(-100.0, -100.0, 100.0);
-    glVertex3f(100.0,  -100.0, 100.0);
-    glVertex3f(100.0,   100.0, 100.0);
-    glVertex3f(-100.0,  100.0, 100.0);
+    glVertex3f(-r, -r, r);
+    glVertex3f( r, -r, r);
+    glVertex3f( r,  r, r);
+    glVertex3f(-r,  r, r);
     glEnd();
 
     glColor4f(0.0, 0.0, 1.0, 1.0);
     glBegin(GL_LINES);
-    glVertex3f(-100.0, -100.0, -100.0);
-    glVertex3f(-100.0, -100.0,  100.0);
+    glVertex3f(-r, -r, -r);
+    glVertex3f(-r, -r,  r);
 
-    glVertex3f(100.0, -100.0, -100.0);
-    glVertex3f(100.0, -100.0,  100.0);
+    glVertex3f(r, -r, -r);
+    glVertex3f(r, -r,  r);
 
-    glVertex3f(100.0, 100.0, -100.0);
-    glVertex3f(100.0, 100.0,  100.0);
+    glVertex3f(r,  r, -r);
+    glVertex3f(r,  r,  r);
 
-    glVertex3f(-100.0, 100.0, -100.0);
-    glVertex3f(-100.0, 100.0,  100.0);
+    glVertex3f(-r, r, -r);
+    glVertex3f(-r, r,  r);
     glEnd();
 
     glEnable(GL_TEXTURE_2D);
@@ -209,7 +229,7 @@ public:
   }
 
   void render(Shader* shader_program, float fov, float rx, float ry, float rz, bool box = true) {
-    projection_setup(fov);
+    projection_setup(fov, rx, ry, rz);
 
     // clear window with the current clearing color, and clear the depth buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -238,16 +258,9 @@ public:
 
     glTranslatef(-camera_pos.x, -camera_pos.y, -camera_pos.z);
 
-    // Get the camera position in object coordinates so we can find the near plane.
-    glm::mat4 inverse_model_view = glm::inverse(model_view);
-    glm::vec4 camera_pos_oc = inverse_model_view * camera_pos;
-    glm::vec4 camera_dir_oc = inverse_model_view * camera_dir;
-    float near_plane_bound = mesh.near_plane_bound(camera_pos_oc, camera_dir_oc);
-    real_near_plane = near_plane_bound*0.99;
-
     // For debugging purposes, let's make sure we can see a box.
     glUseProgramObjectARB(0);
-    if (box) render_box();
+    if (box) render_box(100.0);
     glUseProgram(shader_program->id());
 
     glPushMatrix();
@@ -260,16 +273,12 @@ public:
 
     check_gl_error();
 
-
-    // Translate and scale only the mesh.
-    glm::vec3 centroid(mesh.centroid());
-
+    // Rotate and scale only the mesh.
     glRotatef(rz, 0.0, 0.0, 1.0);
     glRotatef(ry, 0.0, 1.0, 0.0);
     glRotatef(rx, 1.0, 0.0, 0.0);
 
     glScalef(scale_factor, scale_factor, scale_factor);
-    //glTranslatef(-centroid.x, -centroid.y, -centroid.z);
 
     check_gl_error();
 
@@ -315,7 +324,7 @@ public:
     AngleAxisf model_ry(ry * M_PI / 180.0, Vector3f::UnitY());
     AngleAxisf model_rz(rz * M_PI / 180.0, Vector3f::UnitZ());
 
-    Translation3f model_to_camera_translate(Vector3f(camera_pos.x, camera_pos.y, -camera_pos.z));
+    Translation3f model_to_camera_translate(Vector3f(-camera_pos.x, -camera_pos.y, -camera_pos.z));
     AngleAxisf    model_to_camera_rotate(M_PI, Vector3f::UnitY());
   
     Eigen::Transform<float,3,Affine> result;
@@ -323,6 +332,18 @@ public:
               model_rz * model_ry * model_rx;
   
     return result.matrix();
+  }
+
+  /*
+   * Get the model view matrix before the scene is rendered.
+   */
+  glm::mat4 get_model_view_matrix(float rx, float ry, float rz) {
+    return glm::rotate(glm::mat4(1.0f), (float)(M_PI), glm::vec3(0.0, 1.0, 0.0)) *
+      glm::translate(glm::mat4(1.0f), -glm::vec3(camera_pos)) *
+      glm::rotate(glm::mat4(1.0f), rz, glm::vec3(0.0, 0.0, 1.0)) *
+      glm::rotate(glm::mat4(1.0f), ry, glm::vec3(0.0, 1.0, 0.0)) *
+      glm::rotate(glm::mat4(1.0f), rx, glm::vec3(1.0, 0.0, 0.0)) *
+      glm::scale(glm::mat4(1.0f), glm::vec3(scale_factor, scale_factor, scale_factor));
   }
 
 
@@ -514,7 +535,7 @@ private:
 
   glm::vec4 camera_pos;
   glm::vec4 camera_dir;
-  GLfloat ideal_near_plane;
+  GLfloat near_plane_bound;
   GLfloat real_near_plane;
   GLfloat far_plane;
 };

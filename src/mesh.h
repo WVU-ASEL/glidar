@@ -37,7 +37,7 @@
 
 #include "texture.h"
 
-const size_t MAX_LEAF_SIZE = 15;
+const size_t MAX_LEAF_SIZE = 16;
 
 
 // Use this struct to represent vertex coordinates, texture coordinates, and the normal coordinates for this vertex.
