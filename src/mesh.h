@@ -39,6 +39,7 @@
 #include "texture.h"
 
 const size_t MAX_LEAF_SIZE = 16;
+const float MIN_NEAR_PLANE = 0.01; // typically meters, but whatever kind of distance units you're using for your world.
 
 
 // Use this struct to represent vertex coordinates, texture coordinates, and the normal coordinates for this vertex.
@@ -105,10 +106,6 @@ public:
 
     check_gl_error();
 
-/*    glBindAttribLocation(shader_program->id(), ATTR_POSITION, "position");
-    glBindAttribLocation(shader_program->id(), ATTR_DIFFUSE_TEXCOORDS, "diffuse_tex");
-    glBindAttribLocation(shader_program->id(), ATTR_SPECULAR_TEXCOORDS, "specular_tex");
-    glBindAttribLocation(shader_program->id(), ATTR_NORMAL, "normal");*/
     GLuint position_loc     = glGetAttribLocation(shader_program->id(), "position");
     GLuint diffuse_tex_loc  = glGetAttribLocation(shader_program->id(), "diffuse_tex");
     GLuint specular_tex_loc = glGetAttribLocation(shader_program->id(), "specular_tex");
@@ -191,16 +188,25 @@ public:
   }
 
   /*
-   * Find the location of the near plane, given some camera position/direction in object coordinates.
+   * Find the location of the near plane, given some camera position/direction in model coordinates.
    */
-  float near_plane_bound(const glm::mat4& object_to_camera_coords, const glm::vec4& camera_pos) const {
+  float near_plane_bound(const glm::mat4& model_to_object_coords, const glm::vec4& camera_pos) const {
     glm::vec4 nearest;
 
     // Find the nearest point in the mesh.
     nearest_point(camera_pos, nearest);
     nearest.w = 0.0;
 
-    return (object_to_camera_coords * (camera_pos - nearest)).z;
+    float bound = (model_to_object_coords * (camera_pos - nearest)).z;
+
+    if (bound <= 0) {
+      std::cerr << "WARNING: Nearest point on object is behind the sensor, which makes for an invalid near plane setting. Using MIN_NEAR_PLANE="
+                << MIN_NEAR_PLANE << " distance units for the bound. Actual near plane will be slightly closer, depending on your value for NEAR_PLANE_FACTOR." 
+                << std::endl;
+      bound = MIN_NEAR_PLANE;
+    }
+
+    return bound;
   }
 
 private:
@@ -279,6 +285,7 @@ private:
 
       // Create a k-D tree, which we will use to find the near plane no matter how the object is rotated.
       kdtree = new flann::KDTreeSingleIndex<flann::L2_Simple<float> >(*xyz, flann::KDTreeSingleIndexParams(MAX_LEAF_SIZE));
+      kdtree->buildIndex();
     }
 
     /*
@@ -299,7 +306,7 @@ private:
       search_parameters.sorted = flann_sorted;
       search_parameters.checks = flann_checks;
 
-      kdtree->buildIndex();
+
       kdtree->knnSearch(query, indices, distances, 1, search_parameters);
 
       result.x = xyz_data[index*3+0];
