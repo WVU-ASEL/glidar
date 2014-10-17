@@ -25,6 +25,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <glm/gtx/projection.hpp> // glm::proj
+#include <glm/gtx/string_cast.hpp>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -192,16 +193,14 @@ public:
   /*
    * Find the location of the near plane, given some camera position/direction in object coordinates.
    */
-  float near_plane_bound(const glm::vec4& camera_pos, const glm::vec4& camera_dir) const {
+  float near_plane_bound(const glm::mat4& object_to_camera_coords, const glm::vec4& camera_pos) const {
     glm::vec4 nearest;
 
     // Find the nearest point in the mesh.
     nearest_point(camera_pos, nearest);
     nearest.w = 0.0;
 
-    glm::vec4 camera_to_nearest_point = camera_pos - nearest;
-    glm::vec4 camera_to_near_plane = glm::proj(camera_to_nearest_point, camera_dir);
-    return glm::length(camera_to_near_plane);
+    return (object_to_camera_coords * (camera_pos - nearest)).z;
   }
 
 private:
@@ -282,6 +281,10 @@ private:
       kdtree = new flann::KDTreeSingleIndex<flann::L2_Simple<float> >(*xyz, flann::KDTreeSingleIndexParams(MAX_LEAF_SIZE));
     }
 
+    /*
+     * Returns the nearest point in model coordinates to a given point p. Stores the result in result. The return value is
+     * the distance.
+     */
     float nearest_point(const glm::vec4& p, glm::vec4& result) const {
       flann::Matrix<float> query(const_cast<float*>(static_cast<const float*>(glm::value_ptr(p))), 1, 3);
 

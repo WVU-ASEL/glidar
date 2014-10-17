@@ -31,12 +31,16 @@
 
 #ifndef SCENE_H
 # define SCENE_H
+
+#define GLM_FORCE_RADIANS
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/projection.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <cmath>
 #include "mesh.h"
 
@@ -54,6 +58,7 @@ class Scene {
 public:
   Scene(const std::string& filename, float scale_factor_, float camera_z_)
   : scale_factor(scale_factor_),
+    projection(1.0),
     camera_pos(0.0, 0.0, camera_z_, 0.0),
     camera_dir(0.0, 0.0, -1.0, 0.0),
     near_plane_bound(camera_z_ - BOX_HALF_DIAGONAL),
@@ -74,7 +79,6 @@ public:
     glLoadIdentity();
 
     std::cerr << "Position is (" << camera_pos.x << "," << camera_pos.y << "," << camera_pos.z << ") with clipping plane " << real_near_plane << ", " << far_plane << std::endl;
-    //std::cerr << "Box is a 200 x 200 x 200 meter cube." << std::endl;
 
     // If the change in camera position is too great, reduce that change.
     while (z >= real_near_plane)
@@ -115,6 +119,7 @@ public:
     // Figure out where the near plane belongs.
     //glGetFloatv(GL_MODELVIEW_MATRIX, static_cast<GLfloat*>(glm::value_ptr(model_view)));
     glm::mat4 model_view = get_model_view_matrix(rx, ry, rz);
+
     // Get the camera position in object coordinates so we can find the near plane.
     glm::mat4 inverse_model_view = glm::inverse(model_view);
     glm::vec4 camera_pos_oc = inverse_model_view * camera_pos;
@@ -123,14 +128,15 @@ public:
     glm::vec4 nearest_point_oc, nearest_point;
     mesh.nearest_point(camera_pos_oc, nearest_point_oc);
     nearest_point = model_view * nearest_point_oc;
-
-    //std::cerr << "Nearest point in camera coordinates: " << nearest_point.x << "," << nearest_point.y << "," << nearest_point.z << std::endl;
     
-    near_plane_bound = mesh.near_plane_bound(camera_pos_oc, camera_dir_oc);
+    near_plane_bound = mesh.near_plane_bound(model_view, camera_pos_oc);
     real_near_plane = near_plane_bound*0.99;
 
 
     gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
+
+    // Store a copy of the current projection matrix.
+    glGetDoublev( GL_PROJECTION_MATRIX, glm::value_ptr(projection));
   }
 
 
@@ -249,6 +255,7 @@ public:
     glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, 0.00000001f);
 
 
+    // Right now, model view is just an identity matrix, and we'll use it to place the light.
     glm::mat4 model_view;
     glGetFloatv(GL_MODELVIEW_MATRIX, static_cast<GLfloat*>(glm::value_ptr(model_view)));
 
@@ -338,7 +345,7 @@ public:
    * Get the model view matrix before the scene is rendered.
    */
   glm::mat4 get_model_view_matrix(float rx, float ry, float rz) {
-    return glm::rotate(glm::mat4(1.0f), (float)(M_PI), glm::vec3(0.0, 1.0, 0.0)) *
+    return //glm::rotate(glm::mat4(1.0f), (float)(M_PI), glm::vec3(0.0, 1.0, 0.0)) *
       glm::translate(glm::mat4(1.0f), -glm::vec3(camera_pos)) *
       glm::rotate(glm::mat4(1.0f), rz, glm::vec3(0.0, 0.0, 1.0)) *
       glm::rotate(glm::mat4(1.0f), ry, glm::vec3(0.0, 1.0, 0.0)) *
@@ -449,16 +456,20 @@ public:
   size_t write_point_cloud(float* data, unsigned int width, unsigned int height) {
     // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
     glm::ivec4 viewport;
-    glm::dmat4 model_view_matrix, projection_matrix;
+    glm::dmat4 model_view_matrix(1.0), projection_matrix(1.0);
 
-    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
-    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
+    //glGetDoublev( GL_MODELVIEW_MATRIX,  glm::value_ptr(model_view_matrix) );
+    glGetDoublev( GL_PROJECTION_MATRIX, glm::value_ptr(projection_matrix) );
     glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
 
     size_t data_count = 0;
-    double plane_difference = (far_plane - real_near_plane) / 65536.0;
     
     unsigned char rgba[4*width*height];
+
+    // Convert the camera position to a double vector using homogeneous coordinates.
+    glm::dvec4 d_camera_pos = glm::dvec4((double)(camera_pos.x), (double)(camera_pos.y), (double)(camera_pos.z), 0.0);
+    glm::dmat4 model_to_camera_coordinates = glm::rotate(glm::dmat4(1.0), M_PI, glm::dvec3(0.0, 1.0, 0.0));
+
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
 
     for (size_t i = 0; i < height; ++i) {
@@ -468,16 +479,18 @@ public:
         int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
         if (gb == 0) continue;
         double t = gb / 65536.0;
-        double d = t * (far_plane - real_near_plane) + real_near_plane;
+        //double d = t * (far_plane - real_near_plane) + real_near_plane;
 
-        glm::dvec3 position;
-        gluUnProject(i, width-j-1, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+        glm::dvec4 position;
+	position.w = 0.0;
+        gluUnProject(i, j, t, glm::value_ptr(model_view_matrix), glm::value_ptr(projection), (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
-        position = glm::dvec3(camera_pos) - position;
+	// Transform back into camera coordinates
+	glm::dvec4 position_cc = model_to_camera_coordinates * position; 
         
-        data[data_count]   =  (float)position[0];
-        data[data_count+1] =  (float)position[1];
-        data[data_count+2] =  d; //(float)position[2];
+        data[data_count]   =  (float)position_cc[0];
+        data[data_count+1] =  (float)position_cc[1];
+        data[data_count+2] =  (float)position_cc[2];
         data[data_count+3] =  rgba[pos + 0] / 256.0;
 
         data_count += 4;
@@ -533,6 +546,7 @@ private:
   Mesh mesh;
   float scale_factor;
 
+  glm::dmat4 projection;
   glm::vec4 camera_pos;
   glm::vec4 camera_dir;
   GLfloat near_plane_bound;
