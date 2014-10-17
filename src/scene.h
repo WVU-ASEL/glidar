@@ -49,9 +49,10 @@
 const float ASPECT_RATIO = 1.0;
 const float CAMERA_Y     = 0.05;
 const unsigned int BOX_HALF_DIAGONAL = 174;
-const GLfloat MIN_NEAR_PLANE = 0.01;
+// const GLfloat MIN_NEAR_PLANE = 0.01; // now defined in mesh.h
 
 const double RADIANS_PER_DEGREE = M_PI / 180.0;
+const float NEAR_PLANE_FACTOR = 0.95;
 
 
 class Scene {
@@ -86,7 +87,7 @@ public:
 
     camera_pos.z -= z;
     near_plane_bound -= z;
-    real_near_plane = std::max(MIN_NEAR_PLANE, near_plane_bound * 0.99f);
+    real_near_plane = std::max(MIN_NEAR_PLANE, near_plane_bound * NEAR_PLANE_FACTOR);
     far_plane -= z;
   }
 
@@ -124,14 +125,9 @@ public:
     glm::mat4 inverse_model_view = glm::inverse(model_view);
     glm::vec4 camera_pos_oc = inverse_model_view * camera_pos;
     glm::vec4 camera_dir_oc = inverse_model_view * camera_dir;
-
-    glm::vec4 nearest_point_oc, nearest_point;
-    mesh.nearest_point(camera_pos_oc, nearest_point_oc);
-    nearest_point = model_view * nearest_point_oc;
     
     near_plane_bound = mesh.near_plane_bound(model_view, camera_pos_oc);
-    real_near_plane = near_plane_bound*0.99;
-
+    real_near_plane = near_plane_bound * NEAR_PLANE_FACTOR;
 
     gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
 

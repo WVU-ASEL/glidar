@@ -39,6 +39,7 @@
 #include "texture.h"
 
 const size_t MAX_LEAF_SIZE = 16;
+const float MIN_NEAR_PLANE = 0.01; // typically meters, but whatever kind of distance units you're using for your world.
 
 
 // Use this struct to represent vertex coordinates, texture coordinates, and the normal coordinates for this vertex.
@@ -200,7 +201,16 @@ public:
     nearest_point(camera_pos, nearest);
     nearest.w = 0.0;
 
-    return (object_to_camera_coords * (camera_pos - nearest)).z;
+    float bound = (object_to_camera_coords * (camera_pos - nearest)).z;
+
+    if (bound <= 0) {
+      std::cerr << "WARNING: Nearest point on object is behind the sensor, which makes for an invalid near plane setting. Using MIN_NEAR_PLANE="
+                << MIN_NEAR_PLANE << " distance units for the bound. Actual near plane will be slightly closer, depending on your value for NEAR_PLANE_FACTOR." 
+                << std::endl;
+      bound = MIN_NEAR_PLANE;
+    }
+
+    return bound;
   }
 
 private:
