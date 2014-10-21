@@ -80,13 +80,24 @@ add_definitions(${ImageMagick_DEFINITIONS})
 add_definitions(-DMAGICKCORE_QUANTUM_DEPTH=16
                 -DMAGICKCORE_HDRI_ENABLE=0)
 
-add_executable(
+if (ENABLE_PUBSUB)
+  add_executable(
+    glidar
+    ${GUI_TYPE}
+    src/main.cpp
+    src/mesh.cpp
+    src/publish.cpp
+    src/gl_error.cpp
+  )
+else (ENABLE_PUBSUB)
+  add_executable(
     glidar
     ${GUI_TYPE}
     src/main.cpp
     src/mesh.cpp
     src/gl_error.cpp
-)
+  )
+endif(ENABLE_PUBSUB)
 
 target_link_libraries(
     glidar

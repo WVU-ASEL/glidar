@@ -38,40 +38,7 @@
 #include <pcl/console/parse.h>
 
 #ifdef HAS_ZEROMQ
-# include <zmq.hpp>
-# include <Eigen/Dense>
-
-void cpp_message_free(float* data, void* hint) {
-  delete data;
-}
-
-
-extern "C" {
-  void message_free(void* data, void* hint) {
-    cpp_message_free(static_cast<float*>(data), hint);
-  }
-
-  void c_message_free(void* data, void* hint) {
-    free(data);
-  }
-}
-
-void send_pose(zmq::socket_t& publisher, const Eigen::Matrix4f& pose, const unsigned long& timestamp) {
-  size_t size = sizeof(char) + sizeof(unsigned long) + 16 * sizeof(float);
-  void* send_buffer = malloc(size);
-  void* timestamp_buffer = static_cast<void*>(static_cast<char*>(send_buffer) + 1);
-  void* pose_buffer = static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + 1);
-
-  const char TYPE = 'p';
-
-  memcpy(send_buffer, &TYPE, sizeof(char));
-  memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
-  memcpy(pose_buffer, pose.data(), 16 * sizeof(float));
-
-  zmq::message_t message(send_buffer, size, c_message_free, NULL);
-  publisher.send(message);
-}
-
+# include "service/publish.h"
 #endif
 
 #include "scene.h"
@@ -101,51 +68,6 @@ static void s_catch_signals(void) {
   sigemptyset(&action.sa_mask);
   sigaction(SIGINT, &action, NULL);
   sigaction(SIGTERM, &action, NULL);
-}
-
-void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port, size_t expected_subscribers = 1) {
-  std::ostringstream publish_address, sync_address;
-
-  publish_address << "tcp://*:" << port << std::flush;
-  sync_address    << "tcp://*:" << port+1 << std::flush;
-  std::string publish_address_string = publish_address.str(),
-                 sync_address_string = sync_address.str();
-    
-  publisher.bind(publish_address_string.c_str());
-  sync_service.bind(sync_address_string.c_str());
-
-  if (expected_subscribers == 1)
-    std::cerr << "Waiting for 1 subscriber (" << port+1 << ")..." << std::flush;
-  else
-    std::cerr << "Waiting for " << expected_subscribers << " subscribers (" << port+1 << ")..." << std::flush;
-  
-  char* empty_message = "";
-  zmq::message_t tmp2(empty_message, 0, NULL, NULL), tmp1;
-  // Wait for synchronization request, then send synchronization
-  // reply.
-
-  for (size_t subscribers = 0; subscribers < expected_subscribers; ++subscribers) {
-    sync_service.recv(&tmp1);
-    std::cerr << 'r';
-    sync_service.send(tmp2);
-    std::cerr << 's';
-  }
-
-  sync_service.disconnect(sync_address_string.c_str());
-  
-  std::cerr << "done binding to " << publish_address_string << std::endl;
-}
-
-void send_shutdown(zmq::socket_t& publisher) {
-  const char pBYE[] = "pKTHXBAI";
-  zmq::message_t pkthxbai(8);
-  memcpy(pkthxbai.data(), pBYE, 8);
-  publisher.send(pkthxbai);
-
-  const char cBYE[] = "cKTHXBAI";
-  zmq::message_t ckthxbai(8);
-  memcpy(ckthxbai.data(), cBYE, 8);
-  publisher.send(ckthxbai);
 }
 
 #endif
