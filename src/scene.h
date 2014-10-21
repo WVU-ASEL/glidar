@@ -127,7 +127,7 @@ public:
     glm::mat4 inverse_model = glm::inverse(model);
     glm::vec4 camera_pos_mc = inverse_model * camera_pos;
     //glm::vec4 camera_dir_oc = inverse_model_view * camera_dir;
-    
+
     near_plane_bound = mesh.near_plane_bound(model, camera_pos_mc);
     real_near_plane = near_plane_bound * NEAR_PLANE_FACTOR;
 
