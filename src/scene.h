@@ -134,54 +134,7 @@ public:
     gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
 
     // Store a copy of the current projection matrix.
-    glGetDoublev( GL_PROJECTION_MATRIX, glm::value_ptr(projection));
-  }
-
-
-  /*
-   * Given some x,y coordinates in the window, and the blue channel of those coordinates, what are the world coordinates
-   * of that surface?
-   */
-  glm::dvec3 unproject(const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
-    glm::vec4 rgba;
-    return unproject(rgba, model_view_matrix, projection_matrix, viewport, height, x, y);
-  }
-
-
-  glm::dvec3 unproject(glm::vec4& rgba, const glm::dmat4& model_view_matrix, const glm::dmat4& projection_matrix, const glm::ivec4& viewport, size_t height, double x, double y) const {
-    glReadPixels(x, height - y, 1, 1, GL_RGBA, GL_FLOAT, (float*)&rgba);
-
-    std::cerr << "RGB12=" << rgba[1] << ',' << rgba[2] << std::endl;
-
-    int   gb    = (rgba[1] * 65280) + (rgba[2] * 256);
-    double t    = gb == 0 ? 1.0 : gb / 65536.0;
-    //double dist = rgba[2] > 0 ? rgba[2] * (far_plane - real_near_plane) + real_near_plane : far_plane;
-    //std::cerr << "blue channel = " << t << std::endl;
-    //std::cerr << "dist = " << dist << std::endl;
-
-    glm::dvec3 position;
-    gluUnProject(x, y, t, (double*)&model_view_matrix, (double*)&projection_matrix, (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
-
-    std::cerr << position[0] << ',' << position[1] << ',' << position[2] << '\t';
-    position = glm::dvec3(camera_pos) - position;
-    std::cerr << position[0] << ',' << position[1] << ',' << position[2] << '\n';
-
-
-    return position;
-  }
-
-  /*
-   * See unproject above; this one is also responsible for retrieving the model view and projection matrices as well as the viewport.
-   */
-  glm::dvec3 unproject(size_t height, double x, double y) const {
-    glm::ivec4 viewport;
-    glm::dmat4 model_view_matrix, projection_matrix;
-
-    glGetDoublev( GL_MODELVIEW_MATRIX,   (double*)&model_view_matrix);
-    glGetDoublev( GL_PROJECTION_MATRIX,  (double*)&projection_matrix);
-    glGetIntegerv(GL_VIEWPORT,           (int*)&viewport);
-
-    return unproject(model_view_matrix, projection_matrix, viewport, height, x, y);
+    glGetFloatv( GL_PROJECTION_MATRIX, glm::value_ptr(projection));
   }
 
 
@@ -354,6 +307,7 @@ public:
       glm::translate(glm::mat4(1.0f), -glm::vec3(camera_pos));
   }
 
+
   /*
    * Get the model matrix before the scene is rendered.
    */
@@ -366,120 +320,28 @@ public:
 
 
   /*
-   * Write the current color buffer as a PCD (point cloud file) (ASCII version).
-   */
-  void save_point_cloud_ascii(const std::string& basename, unsigned int width, unsigned int height) {
-    std::string filename = basename + ".pcd";
-
-    std::cerr << "Saving point cloud..." << std::endl;
-
-    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
-    glm::ivec4 viewport;
-    glm::dmat4 model_view_matrix, projection_matrix;
-    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
-    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
-    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
-
-    std::ofstream out(filename.c_str());
-
-    // Print PCD header
-    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
-    out << "WIDTH " << width << std::endl;
-    out << "HEIGHT " << height << std::endl;
-    out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
-    out << "POINTS " << width*height << std::endl;
-    out << "DATA ascii" << std::endl;
-
-    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
-    // forever to run.
-    for (size_t i = 0; i < height; ++i) {
-      for (size_t j = 0; j < width; ++j) {
-
-        // unproject writes into rgba
-        glm::vec4 rgba;
-        glm::dvec3 position = unproject(rgba, model_view_matrix, projection_matrix, viewport, height, i, j);
-        //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
-
-        out << position[0] << ' ' << position[1] << ' ' << position[2] << ' ' << rgba[0] << '\n';
-      }
-    }
-
-    out.close();
-
-    std::cerr << "Saved '" << filename << "'" << std::endl;
-  }
-
-  /*
-  * Write the current color buffer as a PCD (point cloud file) (binary version).
-  */
-  void save_point_cloud_organized(const std::string& basename, unsigned int width, unsigned int height) {
-    std::string filename = basename + ".pcd";
-
-    std::cerr << "Saving point cloud..." << std::endl;
-
-    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
-    glm::ivec4 viewport;
-    glm::dmat4 model_view_matrix, projection_matrix;
-    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
-    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
-    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
-
-    std::ofstream out(filename.c_str());
-
-    // Print PCD header
-    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
-    out << "WIDTH " << width << std::endl;
-    out << "HEIGHT " << height << std::endl;
-    out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
-    out << "POINTS " << width*height << std::endl;
-    out << "DATA binary" << std::endl;
-
-    // If I had a newer graphics card, this could probably be done in-GPU instead of in this loop, which really takes
-    // forever to run.
-    for (size_t i = 0; i < height; ++i) {
-      for (size_t j = 0; j < width; ++j) {
-
-        // unproject writes into rgba
-        glm::vec4 rgba;
-        glm::dvec3 position = unproject(rgba, model_view_matrix, projection_matrix, viewport, height, i, j);
-        //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
-
-        float data[4];
-        data[0] =  (float)position[0];
-        data[1] =  (float)position[1];
-        data[2] =  (float)position[2];
-        data[3] =  (float)rgba[0];
-        out.write((char*)(data), sizeof(float)*4);
-      }
-    }
-
-    out.close();
-
-    std::cerr << "Saved '" << filename << "'" << std::endl;
-  }
-
-
-  /*
    * Writes the point cloud to a buffer as x,y,z,i. Returns a size_t
    * indicating the number of floating point entries written (note:
    * not the number of bytes written).
    */
-  size_t write_point_cloud(float* data, unsigned int width, unsigned int height) {
+  size_t write_point_cloud(float rx, float ry, float rz, float* data, unsigned int width, unsigned int height) {
     // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
     glm::ivec4 viewport;
-    glm::dmat4 model_view_matrix(1.0), projection_matrix(1.0);
+    glm::mat4 model_view_matrix = get_model_view_matrix(rx, ry, rz);
+    glm::mat4 view_matrix = get_view_matrix();
+
+    //std::cerr << "view: " << glm::to_string(view_matrix) << std::endl;
+    //std::cerr << "projection: " << glm::to_string(projection) << std::endl;
 
     //glGetDoublev( GL_MODELVIEW_MATRIX,  glm::value_ptr(model_view_matrix) );
-    glGetDoublev( GL_PROJECTION_MATRIX, glm::value_ptr(projection_matrix) );
+    //glGetDoublev( GL_PROJECTION_MATRIX, glm::value_ptr(projection) );
     glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
 
     size_t data_count = 0;
     
     unsigned char rgba[4*width*height];
 
-    // Convert the camera position to a double vector using homogeneous coordinates.
-    glm::dvec4 d_camera_pos = glm::dvec4((double)(camera_pos.x), (double)(camera_pos.y), (double)(camera_pos.z), 0.0);
-    glm::dmat4 model_to_camera_coordinates = glm::rotate(glm::dmat4(1.0), M_PI, glm::dvec3(0.0, 1.0, 0.0));
+    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, 1.0));
 
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
 
@@ -489,19 +351,22 @@ public:
         
         int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
         if (gb == 0) continue;
-        double t = gb / 65536.0;
-        //double d = t * (far_plane - real_near_plane) + real_near_plane;
+        double t = gb / 65536.0; // 2.0 * gb / 65536.0 - 1.0;
+        double d = t * (far_plane - real_near_plane) + real_near_plane;
 
-        glm::dvec4 position;
-	position.w = 0.0;
-        gluUnProject(i, j, t, glm::value_ptr(model_view_matrix), glm::value_ptr(projection), (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+        glm::vec3 win(i,j,t);
+	glm::vec4 position(glm::unProject(win, model_view_matrix, projection, viewport), 0.0);
+        //gluUnProject(i, j, t, glm::value_ptr(model_view_matrix), glm::value_ptr(projection), (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
 
 	// Transform back into camera coordinates
-	glm::dvec4 position_cc = model_to_camera_coordinates * position; 
-        
-        data[data_count]   =  (float)position_cc[0];
-        data[data_count+1] =  (float)position_cc[1];
-        data[data_count+2] =  (float)position_cc[2];
+	glm::vec4 position_cc = axis_flip * model_view_matrix * position;
+	position_cc.z = d;
+
+	//std::cerr << glm::to_string(position) << "    ->    " << glm::to_string(position_cc) << std::endl; 
+
+        data[data_count]   =  position_cc[0];
+        data[data_count+1] =  position_cc[1];
+        data[data_count+2] =  position_cc[2];
         data[data_count+3] =  rgba[pos + 0] / 256.0;
 
         data_count += 4;
@@ -516,20 +381,13 @@ public:
   /*
   * Write the current color buffer as a PCD (point cloud file) (binary non-organized version).
   */
-  void save_point_cloud(const std::string& basename, unsigned int width, unsigned int height) {
+  void save_point_cloud(float rx, float ry, float rz, const std::string& basename, unsigned int width, unsigned int height) {
     std::string filename = basename + ".pcd";
 
     std::cerr << "Saving point cloud..." << std::endl;
 
-    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
-    glm::ivec4 viewport;
-    glm::dmat4 model_view_matrix, projection_matrix;
-    glGetDoublev( GL_MODELVIEW_MATRIX, (double*)&model_view_matrix );
-    glGetDoublev( GL_PROJECTION_MATRIX, (double*)&projection_matrix );
-    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
-
     float* data       = new float[4*width*height + 4];
-    size_t data_count = write_point_cloud(data, width, height);
+    size_t data_count = write_point_cloud(rx, ry, rz, data, width, height);
     
     std::ofstream out(filename.c_str());
     
@@ -557,7 +415,7 @@ private:
   Mesh mesh;
   float scale_factor;
 
-  glm::dmat4 projection;
+  glm::mat4 projection;
   glm::vec4 camera_pos;
   glm::vec4 camera_dir;
   GLfloat near_plane_bound;

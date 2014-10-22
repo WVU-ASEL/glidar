@@ -212,7 +212,8 @@ int main(int argc, char** argv) {
       // First, re-render without the box, or it'll show up in our point cloud.
       scene.render(&shader_program, fov, rx, ry, rz, false);
 
-      scene.save_point_cloud(save_and_quit ? pcd_filename : "buffer",
+      scene.save_point_cloud(rx, ry, rz,
+			     save_and_quit ? pcd_filename : "buffer",
                              width,
                              height);
       scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
@@ -225,26 +226,6 @@ int main(int argc, char** argv) {
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
       mouse_button_pressed = true;
-    }
-
-    if (mouse_button_pressed && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE) {
-      mouse_button_pressed = false;
-      double mouse_x, mouse_y;
-      glfwGetCursorPos(window, &mouse_x, &mouse_y);
-
-      std::cerr << "Click in window at " << mouse_x << ", " << mouse_y << std::endl;
-
-      // First, re-render without the box, or it'll show up in our point cloud.
-      scene.render(&shader_program, rx, ry, rz, false);
-
-      glm::dvec3 position = scene.unproject(height, mouse_x, mouse_y);
-
-      std::cerr << "\tcamera z  : " << scene.get_camera_z() << std::endl;
-      std::cerr << "\tnear z    : " << scene.get_near_plane() << std::endl;
-      std::cerr << "\tfar z     : " << scene.get_far_plane() << std::endl;
-      //std::cerr << "\tbuffer val: " << rgba[0] << '\t' << rgba[1] << '\t' << rgba[2] << '\t' << rgba[3] << std::endl;
-      std::cerr << "\tcoords    : " << position[0] << '\t' << position[1] << '\t' << position[2] << std::endl;
-      
     }
 
     rx += model_rotate_x * delta_time;
@@ -273,7 +254,7 @@ int main(int argc, char** argv) {
       void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
       void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
       float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
-      size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) + scene.write_point_cloud(cloud_buffer, width, height) * sizeof(float);
+      size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) + scene.write_point_cloud(rx, ry, rz, cloud_buffer, width, height) * sizeof(float);
       memcpy(send_buffer, &TYPE, sizeof(char));
       memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
       zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
