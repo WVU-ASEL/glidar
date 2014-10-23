@@ -38,6 +38,7 @@ typedef long long long_signed_timestamp_t; // Safer than the above; use for conv
 
 #include <limits>
 #include <Eigen/Dense>
+#include <Eigen/StdVector>
 
 struct pose_output_t {
   typedef float score_t;
