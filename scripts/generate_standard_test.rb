@@ -1,13 +1,14 @@
 #!/usr/bin/env ruby
 
-require 'nmatrix'
-require 'nmatrix/homogeneous.rb'
+#require 'nmatrix'
+#require 'nmatrix/homogeneous.rb'
 require 'shellwords'
 
 LIDAR_WIDTH  = 256  # pixels
 LIDAR_HEIGHT = 256  # pixels
 LIDAR_FOV    = 20   # degrees
-MODEL_PATH   = 'ISS\ models\ 2011/Objects/Modules/MLM/MLM.lwo'
+#MODEL_PATH   = 'ISS\ models\ 2011/Objects/Modules/MLM/MLM.lwo'
+MODEL_PATH   = 'models/itokawa.ply'
 BINARY       = "build/glidar" #"build/glidar.app/Contents/MacOS/glidar"
 
 if ARGV.size < 5
@@ -48,7 +49,7 @@ positions.each.with_index do |p,count|
   pose_filename     = output_path + "/pose_#{count.to_s.rjust(5, '0')}.txt"
 
   # Generate the LIDAR image
-  cmd = "#{BINARY} #{model_path} #{model_scale} 0 0 0 #{p.join(' ')} #{LIDAR_WIDTH} #{LIDAR_HEIGHT} #{LIDAR_FOV} #{output_filename}"
+  cmd = "#{BINARY} #{model_path} --scale #{model_scale} --dr 0,0,0 --r #{p[0]},#{p[1]},#{p[2]} --camera-z #{p[3]} -w #{LIDAR_WIDTH} -h #{LIDAR_HEIGHT} --fov #{LIDAR_FOV} --pcd #{output_filename}"
   STDERR.puts "cmd is:\n#{cmd}"
 
   if !system(cmd)
