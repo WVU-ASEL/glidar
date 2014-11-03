@@ -61,23 +61,51 @@ void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int por
 
 /** \brief sends a pose to subscribers
   * \param[in] publisher the socket through which the data will be sent
-  * \param[out] timestamp the timestamp of the sensor image to which the pose corresponds
-  * \param[out] pose the 4x4 matrix that is to be sent
+  * \param[in] timestamp the timestamp of the sensor image to which the pose corresponds
+  * \param[in] pose the 4x4 matrix that is to be sent
   */ 
 void send_pose(zmq::socket_t& publisher, const Eigen::Matrix4f& pose, const timestamp_t& timestamp);
 
 
 /** \brief sends a set of poses and scores to subscribers
   * \param[in] publisher the socket through which the data will be sent
-  * \param[out] pose the 4x4 matrix that is to be sent
+  * \param[in] pose the 4x4 matrix that is to be sent
   */ 
 void send_poses(zmq::socket_t& publisher, const pose_message_t::ptr& poses);
+
+
+/** \brief sends a vector of some type to subscribers
+ *  \param[in] publisher
+ *  \param[in] values the values that will be published
+ *  \param[in] type the character which will indicate content type
+ */
+template <typename T>
+void send_vector(zmq::socket_t& publisher, const timestamp_t& timestamp, const typename std::vector<T>& values, const char type = 'v') {
+  size_t size = values.size();
+  zmq::message_t vec(sizeof(char) + sizeof(timestamp_t) + size*sizeof(T));
+
+  // Write type
+  memcpy(vec.data(), &type, sizeof(char));
+
+  // Write size
+  timestamp_t* p_time = reinterpret_cast<timestamp_t*>(static_cast<char*>(vec.data()) + 1);
+  memcpy(p_time, &timestamp, sizeof(timestamp_t));
+
+  // Write data
+  T* p = reinterpret_cast<T*>(&(p_time[1]));
+  for (size_t i = 0; i < values.size(); ++i) {
+    p[i] = values[i];
+  }
+
+  publisher.send(vec);
+}
 
 
 /** \brief sends a disorganized point cloud to subscribers (assumption 
   * is that both the sender and recipient have the same size PointT)
   * \param[in] publisher the socket through which the data will be sent
-  * \param[out] pose the 4x4 matrix that is to be sent
+  * \param[in] timestamp
+  * \param[in] cloud
   */ 
 template <typename PointT>
 void send_disorganized_point_cloud(zmq::socket_t& publisher, const timestamp_t& timestamp, typename pcl::PointCloud<PointT>::ConstPtr cloud) {

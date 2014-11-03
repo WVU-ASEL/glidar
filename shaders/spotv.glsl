@@ -37,6 +37,10 @@ attribute vec2 specular_tex;
 attribute vec3 normal;
 
 uniform mat4 LightModelViewMatrix;
+uniform mat4 ViewMatrix;
+uniform mat4 ModelViewMatrix;
+uniform mat3 NormalMatrix;
+uniform mat4 ModelViewProjectionMatrix;
 
 varying vec3 normal0;
 
@@ -49,11 +53,11 @@ varying vec3  ec_pos;
 void main() {
   specular = vec4(1.0, 1.0, 1.0, 1.0);
 
-  normal0 = normalize(gl_NormalMatrix * normal);
+  normal0 = normalize(NormalMatrix * normal);
 
   // Get coordinates in camera frame.
-  ec_pos = vec3(gl_ModelViewMatrix * vec4(position, 1.0));
-  vec3 ec_light_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
+  ec_pos = vec3(ModelViewMatrix * vec4(position, 1.0));
+  vec3 ec_light_dir = vec3(ViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
 
   // Normally in a shading model, we use the half_vector to deal with the difference between
   // the light and the viewer. For most 3D sensors, however, we assume the light source and
@@ -68,5 +72,5 @@ void main() {
   specular = gl_FrontMaterial.specular * gl_LightSource[0].specular;
   ambient  = gl_FrontMaterial.ambient * gl_LightSource[0].ambient;
 
-  gl_Position = gl_ModelViewProjectionMatrix * vec4(position, 1.0);
+  gl_Position = ModelViewProjectionMatrix * vec4(position, 1.0);
 }

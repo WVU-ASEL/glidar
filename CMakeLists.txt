@@ -86,6 +86,7 @@ if (ENABLE_PUBSUB)
     ${GUI_TYPE}
     src/main.cpp
     src/mesh.cpp
+    src/subscribe.cpp
     src/publish.cpp
     src/gl_error.cpp
   )

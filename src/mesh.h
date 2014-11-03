@@ -199,6 +199,8 @@ public:
 
     float bound = (model_to_object_coords * (camera_pos - nearest)).z;
 
+    std::cerr << "bound = " << bound << std::endl;
+
     if (bound <= 0) {
       std::cerr << "WARNING: Nearest point on object is behind the sensor, which makes for an invalid near plane setting. Using MIN_NEAR_PLANE="
                 << MIN_NEAR_PLANE << " distance units for the bound. Actual near plane will be slightly closer, depending on your value for NEAR_PLANE_FACTOR." 
@@ -207,6 +209,16 @@ public:
     }
 
     return bound;
+  }
+
+
+  float far_plane_bound(const glm::mat4& model_to_object_coords, const glm::vec4& camera_pos) const {
+    // Find the farthest point in the mesh
+    glm::vec4 negative_camera_pos(-camera_pos);
+    glm::vec4 farthest;
+    nearest_point(negative_camera_pos, farthest);
+    farthest.w = 0.0;
+    return (model_to_object_coords * (camera_pos - farthest)).z;
   }
 
 private:

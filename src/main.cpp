@@ -33,29 +33,20 @@
 #include <sstream>
 #include <csignal>
 
-#include <Magick++.h>
-
 #include <pcl/console/parse.h>
 
-#ifdef HAS_ZEROMQ
-# include "service/publish.h"
-#endif
-
+#include "service/publish.h"
+#include "service/subscribe.h"
 #include "scene.h"
 #include "mesh.h"
-#include "service/pose_logger.h"
+//#include "service/pose_logger.h"
 
-using namespace glm;
 
 using std::cerr;
 using std::cout;
 using std::endl;
 
 const float SPEED = 36.0f;
-
-
-#ifdef HAS_ZEROMQ
-#include <csignal>
 
 static int s_interrupted = 0;
 static void s_signal_handler(int signal_value) {
@@ -70,7 +61,53 @@ static void s_catch_signals(void) {
   sigaction(SIGTERM, &action, NULL);
 }
 
-#endif
+
+recv_result_t receive_model_view_matrices(zmq::socket_t& subscriber, Eigen::Matrix4f& inverse_model, Eigen::Matrix4f& view, int flags = 0) {
+  boost::shared_ptr<pose_message_t> poses;
+  recv_result_t r = receive_poses(subscriber, poses, flags);
+  if (r == RECV_SUCCESS) {
+    memcpy(inverse_model.data(), &((*poses)[0].pose), sizeof(float)*16);
+    memcpy(view.data(),          &((*poses)[1].pose), sizeof(float)*16);
+  }
+
+  std::cerr << "Receive model:" << inverse_model << std::endl;
+  std::cerr << "Receive view:" << view << std::endl;
+  return r;
+}
+
+
+recv_result_t receive_model_view_matrices(zmq::socket_t& subscriber, glm::mat4& inverse_model, glm::mat4& view, int flags = 0) {
+  boost::shared_ptr<pose_message_t> poses;
+  recv_result_t r = receive_poses(subscriber, poses, flags);
+  if (r == RECV_SUCCESS) {
+    memcpy(glm::value_ptr(inverse_model), &((*poses)[0].pose), sizeof(float)*16);
+    memcpy(glm::value_ptr(view),          &((*poses)[1].pose), sizeof(float)*16);
+  }
+
+  std::cerr << "view: " << glm::to_string(view) << std::endl;
+  return r;
+}
+
+
+recv_result_t receive_pose_components(zmq::socket_t& subscriber, timestamp_t& timestamp, glm::dquat& object, glm::dvec3& translation, glm::dquat& sensor, int flags = 0) {
+  std::vector<double> v;
+  recv_result_t r = receive_vector(subscriber, timestamp, v, flags);
+  if (r == RECV_SUCCESS) {
+    object.w = v[0];
+    object.x = v[1];
+    object.y = v[2];
+    object.z = v[3];
+    translation.x = v[4];
+    translation.y = v[5];
+    translation.z = v[6];
+    sensor.w = v[7];
+    sensor.x = v[8];
+    sensor.y = v[9];
+    sensor.z = v[10];
+  }
+
+  return r;
+}
 
 
 // Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp
@@ -85,17 +122,22 @@ int main(int argc, char** argv) {
 
   float model_scale_factor = 1.0;
   float model_rotate_x = 0.0, model_rotate_y = 0.0, model_rotate_z = 0.0;
+  float camera_rotate_x = 0.0, camera_rotate_y = 0.0, camera_rotate_z = 0.0;
   float model_init_rotate_x = 0.0, model_init_rotate_y = 0.0, model_init_rotate_z = 0.0;
-  float camera_z = 1000.0;
+  float camera_init_rotate_x = 0.0, camera_init_rotate_y = 0.0, camera_init_rotate_z = 0.0;
+  float camera_x = 0.0, camera_y = 0.0, camera_z = 1000.0;
   unsigned int width = 256, height = 256;
   float fov = 20.0;
-  unsigned long timestamp = 0;
+  timestamp_t timestamp = 0;
   std::string pcd_filename;
 
   pcl::console::parse(argc, argv, "--scale", model_scale_factor);
-  pcl::console::parse_3x_arguments(argc, argv, "--r", model_init_rotate_x, model_init_rotate_y, model_init_rotate_z);
-  pcl::console::parse_3x_arguments(argc, argv, "--dr", model_rotate_x, model_rotate_y, model_rotate_z);
+  pcl::console::parse_3x_arguments(argc, argv, "--model-r", model_init_rotate_x, model_init_rotate_y, model_init_rotate_z);
+  pcl::console::parse_3x_arguments(argc, argv, "--model-dr", model_rotate_x, model_rotate_y, model_rotate_z);
   pcl::console::parse(argc, argv, "--camera-z", camera_z);
+  pcl::console::parse_3x_arguments(argc, argv, "--camera-xyz", camera_x, camera_y, camera_z);
+  pcl::console::parse_3x_arguments(argc, argv, "--camera-r", camera_init_rotate_x, camera_init_rotate_y, camera_init_rotate_z);
+  pcl::console::parse_3x_arguments(argc, argv, "--camera-dr", camera_rotate_x, camera_rotate_y, camera_rotate_z);
   pcl::console::parse(argc, argv, "--fov", fov);
   pcl::console::parse(argc, argv, "--pcd", pcd_filename);
 
@@ -107,26 +149,32 @@ int main(int argc, char** argv) {
   /*
    * If ZeroMQ is included, let's publish the data.
    */
-#ifdef HAS_ZEROMQ
-  int port = 0;
+  int port = 0, physics_port = 0;
   int frequency = 15;
   int subscribers = 1;
+  int highwater_mark = 0;
   pcl::console::parse(argc, argv, "--port", port);
+  pcl::console::parse(argc, argv, "--physics-port", physics_port);
   pcl::console::parse(argc, argv, "-p", port);
   pcl::console::parse(argc, argv, "--subscribers", subscribers);
   pcl::console::parse(argc, argv, "--pub-rate", frequency);
+  pcl::console::parse(argc, argv, "--hwm", highwater_mark);
 
   zmq::context_t context(1);
   zmq::socket_t publisher(context, ZMQ_PUB);
+  zmq::socket_t subscriber(context, ZMQ_SUB);
   zmq::socket_t truth_publisher(context, ZMQ_PUB);
   zmq::socket_t sync_service(context, ZMQ_REP);
-  PoseLogger logger("sensor.pose");
+  zmq::socket_t sync_client(context, ZMQ_REQ);
+  //PoseLogger logger("sensor.pose");
     
   if (port)
     sync_publish(publisher, sync_service, port, subscribers);
+
+  if (physics_port)
+    sync_subscribe(subscriber, sync_client, physics_port, highwater_mark, 'v');
   
   s_catch_signals ();
-#endif
 
   std::cerr << "Loading model "      << model_filename << std::endl;
   std::cerr << "Scaling model by "   << model_scale_factor << std::endl;
@@ -172,12 +220,15 @@ int main(int argc, char** argv) {
 
   Shader shader_program("shaders/spotv.glsl", "shaders/lidarf.glsl");
   //Shader shader_program("lidarv.glsl", "lidarf.glsl");
+  
+  float mrx = model_init_rotate_x,
+        mry = model_init_rotate_y,
+        mrz = model_init_rotate_z,
+    crx = camera_init_rotate_x,
+    cry = camera_init_rotate_y,
+    crz = camera_init_rotate_z;
 
-  float rx = model_init_rotate_x,
-        ry = model_init_rotate_y,
-        rz = model_init_rotate_z;
-
-  scene.projection_setup(fov, rx, ry, rz);
+  //scene.projection_setup(fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
 
   bool mouse_button_pressed = false;
   bool s_key_pressed = false;
@@ -194,30 +245,43 @@ int main(int argc, char** argv) {
   do {
 
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-      scene.move_camera(&shader_program, delta_time * SPEED);
+      camera_z -= delta_time * SPEED;
     }
 
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-      scene.move_camera(&shader_program, delta_time * -SPEED);
+      camera_z += delta_time * SPEED;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
       s_key_pressed = true;
     }
 
+    recv_result_t receive_result;
+    glm::dquat object, sensor;
+    glm::dvec3 translation;
+    if (physics_port) {
+      receive_result = receive_pose_components(subscriber, timestamp, object, translation, sensor);
+      //receive_result = receive_model_view_matrices(subscriber, inverse_model, view);
+      if (receive_result == RECV_SHUTDOWN) s_interrupted = true;
+    }
+
     // Write a PCD file if the user presses the 's' key.
     if (save_and_quit || (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)) {
 
       // First, re-render without the box, or it'll show up in our point cloud.
-      scene.render(&shader_program, fov, rx, ry, rz, false);
+      scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
 
-      scene.save_point_cloud(rx, ry, rz,
+      scene.save_point_cloud(mrx, mry, mrz,
+			     camera_x, camera_y, camera_z,
+			     crx, cry, crz,
 			     save_and_quit ? pcd_filename : "buffer",
                              width,
                              height);
       scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
-                                         rx, ry, rz);
+                                         mrx, mry, mrz,
+					 camera_x, camera_y, camera_z,
+					 crx, cry, crz);
 
       s_key_pressed = false;
 
@@ -228,25 +292,35 @@ int main(int argc, char** argv) {
       mouse_button_pressed = true;
     }
 
-    rx += model_rotate_x * delta_time;
-    ry += model_rotate_y * delta_time;
-    rz += model_rotate_z * delta_time;
+    if (physics_port) {
+      //Eigen::Vector3f angle = pose.topLeftCorner<3,3>().eulerAngles(0,1,2);
+      //scene.move_camera_to(&shader_program, pose(0,3), pose(1,3), pose(2,3));
+      //scene.render(&shader_program, fov, rx, ry, rz, angle[0] * 180.0/M_PI, angle[1] * 180.0/M_PI, angle[2] * 180.0/M_PI, false);
+      scene.render(&shader_program, fov, object, translation, sensor);
+      
+    } else {
+      mrx += model_rotate_x * delta_time;
+      mry += model_rotate_y * delta_time;
+      mrz += model_rotate_z * delta_time;
 
-
-
-#ifdef HAS_ZEROMQ
-    scene.render(&shader_program, fov, rx, ry, rz, false); // render without the box
+      crx += camera_rotate_x * delta_time;
+      cry += camera_rotate_y * delta_time;
+      crz += camera_rotate_z * delta_time;
+      
+      scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz); // render without the box
+    }
 
     if (loopcount == frequency && port) {
-      ++timestamp;
+      if (!physics_port) ++timestamp;
 
-      Eigen::Matrix4f pose = scene.get_pose(rx, ry, rz);
+      //if (!physics_port)
+        //pose = scene.get_pose(rx, ry, rz, crx, cry, crz);
 
       // Write timestamp and pose to the logger.
-      logger.log(timestamp, pose);
+      //      logger.log(timestamp, pose);
 
       // Transmit the true pose.
-      send_pose(publisher, pose, timestamp);
+      //      send_pose(publisher, pose, timestamp);
 
       // Now indicate that we're sending a point cloud
       const char TYPE = 'c';
@@ -254,7 +328,8 @@ int main(int argc, char** argv) {
       void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
       void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
       float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
-      size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) + scene.write_point_cloud(rx, ry, rz, cloud_buffer, width, height) * sizeof(float);
+      size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) +
+	scene.write_point_cloud(mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz, cloud_buffer, width, height) * sizeof(float);
       memcpy(send_buffer, &TYPE, sizeof(char));
       memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
       zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
@@ -281,9 +356,6 @@ int main(int argc, char** argv) {
       }
       saved_now_quit = true;
     }
-#else
-    scene.render(&shader_program, fov, rx, ry, rz, true); // render with the box
-#endif
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -295,12 +367,8 @@ int main(int argc, char** argv) {
     save_and_quit = pcd_filename.size() > 0;
 
     ++loopcount;
-
-#ifdef HAS_ZEROMQ    
+  
   } while (!saved_now_quit);
-#else
-  } while (!saved_now_quit && glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
-#endif
 
   glfwTerminate();
 

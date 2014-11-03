@@ -120,3 +120,4 @@ void send_poses(zmq::socket_t& publisher, const pose_message_t::ptr& poses) {
   boost::shared_ptr<zmq::message_t> msg(poses->to_zmq());
   publisher.send(*msg);
 }
+

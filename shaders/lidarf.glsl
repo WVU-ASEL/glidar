@@ -43,7 +43,9 @@ varying vec3 ec_pos;
 //uniform vec4 camera_pos;
 uniform float far_plane;
 uniform float near_plane;
+uniform mat4 ViewMatrix;
 uniform mat4 LightModelViewMatrix;
+
 
 uniform sampler2D diffuse_texture_color;
 uniform sampler2D specular_texture_color;
@@ -69,7 +71,7 @@ void main() {
   vec4 spec_color = specular * texture2D(specular_texture_color, gl_TexCoord[1].st); //vec4((specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r, 0.0, 0.0, 1.0);
   //float bounce = (specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r * rand_positive(gl_FragCoord.xy);
 
-  vec3 spot_dir = vec3(LightModelViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
+  vec3 spot_dir = vec3(ViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
   vec3 light_dir = -ec_pos; //spot_dir - ec_pos;
 
   float dist = length(light_dir);
@@ -84,7 +86,7 @@ void main() {
     // Calculate the angle w.r.t. the spotlight.
     float spot_effect = dot(normalize(spot_dir), normalize(light_dir));
 
-    if (spot_effect > gl_LightSource[0].spotCosCutoff) {
+    //if (spot_effect > gl_LightSource[0].spotCosCutoff) {
       float att = 1.0 / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
       color += att * (diffuse_color * n_dot_hv + ambient);
@@ -97,9 +99,9 @@ void main() {
       color.g = floor(dist_ratio / 256.0f) / 256.0;
       color.b = mod(dist_ratio, 256.0f) / 256.0;
       color.a = 1.0;
-    } else {
-      color = vec4(0.0,0.0,0.0,1.0);
-    }
+    //} else {
+    //  color = vec4(0.0,0.0,0.0,1.0);
+    //}
   } else {
     color = vec4(0.0,0.0,0.0,1.0);
   }
