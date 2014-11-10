@@ -328,8 +328,13 @@ int main(int argc, char** argv) {
       void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
       void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
       float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
+
+      size_t cloud_size = physics_port ?
+	scene.write_point_cloud(object, translation, sensor, cloud_buffer, width, height) : 
+	scene.write_point_cloud(mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz, cloud_buffer, width, height);
+      
       size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) +
-	scene.write_point_cloud(mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz, cloud_buffer, width, height) * sizeof(float);
+	cloud_size * sizeof(float);
       memcpy(send_buffer, &TYPE, sizeof(char));
       memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
       zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);

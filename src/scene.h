@@ -212,10 +212,10 @@ public:
   
 
   void render(Shader* shader_program, float fov, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
-    glm::mat4 view_physics  = glm::mat4(glm::mat4_cast(camera_q) * glm::translate(glm::dmat4(1.0), translate));
+    glm::mat4 view          = glm::mat4(glm::mat4_cast(camera_q) * glm::translate(glm::dmat4(1.0), translate));
     glm::mat4 inverse_model = glm::mat4(glm::mat4_cast(glm::inverse(model_q)));
 
-    render(shader_program, fov, inverse_model, view_physics);
+    render(shader_program, fov, inverse_model, view);
   }
 
   
@@ -283,7 +283,30 @@ public:
 
 
   /*
-   * Return the transformation metadata as a 4x4 homogeneous matrix.
+   * Write the translation and rotation information to a file.
+   */
+  void save_transformation_metadata(const std::string& basename, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
+    std::string filename = basename + ".transform";
+    std::ofstream out(filename.c_str());
+
+    out << model_q.w << '\t' << model_q.x << '\t' << model_q.y << '\t' << model_q.z << '\n'
+        << translate.x << '\t' << translate.y << '\t' << translate.z << '\n'
+        << camera_q.w << '\t' << camera_q.x << '\t' << camera_q.y << '\t' << camera_q.z << std::endl;
+
+    out.close();
+  }
+
+
+  /*
+   * Return the transformation metadata as a 4x4 homogeneous matrix (float).
+   */
+  glm::mat4 get_pose(const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
+    return glm::mat4(get_model_view_matrix_without_scaling(model_q, translate, camera_q));
+  }
+  
+
+  /*
+   * Return the transformation metadata as a 4x4 homogeneous matrix. Deprecated.
    */
   Eigen::Matrix4f get_pose(float mod_rx, float mod_ry, float mod_rz, float cam_rx, float cam_ry, float cam_rz) {
     using Eigen::Vector3f;
@@ -321,7 +344,11 @@ public:
     return get_view_matrix(camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz) * get_model_matrix(model_rx, model_ry, model_rz);
   }
 
+  glm::dmat4 get_model_view_matrix_without_scaling(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera) {
+    return get_view_matrix(translate, camera) * glm::mat4_cast(model);
+  }
 
+  
   glm::dmat4 get_model_view_matrix(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera) {
     return get_view_matrix(translate, camera) * get_model_matrix(model);
   }
@@ -332,7 +359,11 @@ public:
 
   glm::dmat4 get_inverse_model_matrix(const glm::dquat& model) {
     return glm::scale(glm::dmat4(1.0), glm::dvec3(1.0/scale_factor, 1.0/scale_factor, 1.0/scale_factor)) *
-      glm::mat4_cast(glm::inverse(model));
+      get_inverse_model_matrix_without_scaling(model);
+  }
+
+  glm::dmat4 get_inverse_model_matrix_without_scaling(const glm::dquat& model) {
+    return glm::mat4_cast(glm::inverse(model));
   }
 
   glm::dmat4 get_model_matrix(const glm::dquat& model) {
@@ -362,11 +393,64 @@ public:
     return model;
   }
 
+  /*
+   * Writes the point cloud to a buffer as x,y,z,i (in binary). Returns a size_t
+   * indicating the number of floating point entries written (note:
+   * not the number of bytes written).
+   */  
+  size_t write_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, float* data, unsigned int width, unsigned int height) {
+    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
+    glm::ivec4 viewport;
+    glm::mat4 model_view_matrix(get_model_view_matrix(model, translate, camera));
 
+    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
+
+    size_t data_count = 0;
+    
+    unsigned char rgba[4*width*height];
+
+    //glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, 1.0));
+
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
+
+    for (size_t i = 0; i < height; ++i) {
+      for (size_t j = 0; j < width; ++j) {
+        size_t pos = 4*(j*height+i);
+        
+        int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
+        if (gb == 0) continue;
+        double t = gb / 65536.0; // 2.0 * gb / 65536.0 - 1.0;
+        double d = t * (far_plane - real_near_plane) + real_near_plane;
+
+        glm::vec3 win(i,j,t);
+	glm::vec4 position(glm::unProject(win, model_view_matrix, projection, viewport), 0.0);
+        //gluUnProject(i, j, t, glm::value_ptr(model_view_matrix), glm::value_ptr(projection), (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+
+	// Transform back into camera coordinates
+	glm::vec4 position_cc = /*axis_flip * */ model_view_matrix * position;
+	position_cc.z = d;
+
+	//std::cerr << glm::to_string(position) << "    ->    " << glm::to_string(position_cc) << std::endl; 
+
+        data[data_count]   =  position_cc[0];
+        data[data_count+1] =  position_cc[1];
+        data[data_count+2] =  position_cc[2];
+        data[data_count+3] =  rgba[pos + 0] / 256.0;
+
+        data_count += 4;
+      }
+    }
+
+    return data_count;    
+  }
+
+  
   /*
    * Writes the point cloud to a buffer as x,y,z,i. Returns a size_t
    * indicating the number of floating point entries written (note:
    * not the number of bytes written).
+   *
+   * This version is deprecated.
    */
   size_t write_point_cloud(float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz, float* data, unsigned int width, unsigned int height) {
     // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
@@ -417,7 +501,7 @@ public:
 
 
   /*
-  * Write the current color buffer as a PCD (point cloud file) (binary non-organized version).
+  * Write the current color buffer as a PCD (point cloud file) (binary non-organized version). Deprecated.
   */
   void save_point_cloud(float mrx, float mry, float mrz, float cx, float cy, float cz, float crx, float cry, float crz, const std::string& basename, unsigned int width, unsigned int height) {
     std::string filename = basename + ".pcd";
@@ -442,6 +526,35 @@ public:
 
     std::cerr << "Saved '" << filename << "'" << std::endl;
   }
+
+
+  /*
+   * Write the current color buffer as a PCD (point cloud file).
+   */
+  void save_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, const std::string& basename, unsigned int width, unsigned int height) {
+   std::string filename = basename + ".pcd";
+
+    std::cerr << "Saving point cloud..." << std::endl;
+
+    float* data       = new float[4*width*height + 4];
+    size_t data_count = write_point_cloud(model, translate, camera, data, width, height);
+    
+    std::ofstream out(filename.c_str());
+    
+    // Print PCD header
+    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
+    out << "WIDTH " << data_count / 4 << std::endl;
+    out << "HEIGHT " << 1 << std::endl;
+    out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
+    out << "POINTS " << data_count / 4 << std::endl;
+    out << "DATA binary" << std::endl;
+    out.write((char*)(data), sizeof(float)*data_count);
+
+    out.close();
+
+    std::cerr << "Saved '" << filename << "'" << std::endl;
+  }
+  
 
   float get_near_plane() const { return real_near_plane; }
   float get_far_plane() const { return far_plane; }
