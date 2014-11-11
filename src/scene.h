@@ -176,8 +176,8 @@ public:
     gl_setup_lighting(shader_program);
 
     glm::mat4 model = glm::inverse(inverse_model);//model_physics * glm::scale(glm::mat4(1.0f), glm::vec3(scale_factor, scale_factor, scale_factor));
-    std::cerr << "Model: " << glm::to_string(model) << std::endl;
-    std::cerr << "View: " << glm::to_string(view_physics) << std::endl;
+    //std::cerr << "Model: " << glm::to_string(model) << std::endl;
+    //std::cerr << "View: " << glm::to_string(view_physics) << std::endl;
 
     GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
     GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
@@ -196,7 +196,7 @@ public:
     GLint normal_id = glGetUniformLocation(shader_program->id(), "NormalMatrix");
     glUniformMatrix3fv(normal_id, 1, false, static_cast<GLfloat*>(glm::value_ptr(normal_matrix)));
 
-    std::cerr << "Model view: " << glm::to_string(model_view) << std::endl;
+    //std::cerr << "Model view: " << glm::to_string(model_view) << std::endl;
     
     glm::mat4 model_view_projection = projection * model_view;
     
@@ -283,17 +283,24 @@ public:
 
 
   /*
+   * Write the pose information to a file.
+   */
+  void save_pose_metadata(const std::string& basename, const glm::dmat4& pose) {
+    std::string filename = basename + ".transform";
+    std::ofstream out(filename.c_str());
+    out << pose[0][0] << ' ' << pose[1][0] << ' ' << pose[2][0] << ' ' << pose[3][0] << '\n'
+        << pose[0][1] << ' ' << pose[1][1] << ' ' << pose[2][1] << ' ' << pose[3][1] << '\n'
+        << pose[0][2] << ' ' << pose[1][2] << ' ' << pose[2][2] << ' ' << pose[3][2] << '\n'
+        << pose[0][3] << ' ' << pose[1][3] << ' ' << pose[2][3] << ' ' << pose[3][3] << std::endl;
+    out.close();
+  }
+
+
+  /*
    * Write the translation and rotation information to a file.
    */
   void save_transformation_metadata(const std::string& basename, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
-    std::string filename = basename + ".transform";
-    std::ofstream out(filename.c_str());
-
-    out << model_q.w << '\t' << model_q.x << '\t' << model_q.y << '\t' << model_q.z << '\n'
-        << translate.x << '\t' << translate.y << '\t' << translate.z << '\n'
-        << camera_q.w << '\t' << camera_q.x << '\t' << camera_q.y << '\t' << camera_q.z << std::endl;
-
-    out.close();
+    save_pose_metadata(basename, get_model_view_matrix_without_scaling(model_q, translate, camera_q));
   }
 
 
@@ -399,17 +406,16 @@ public:
    * not the number of bytes written).
    */  
   size_t write_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, float* data, unsigned int width, unsigned int height) {
-    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
     glm::ivec4 viewport;
-    glm::mat4 model_view_matrix(get_model_view_matrix(model, translate, camera));
-
+    glm::mat4 identity(1.0);
+    
     glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
 
     size_t data_count = 0;
     
     unsigned char rgba[4*width*height];
 
-    //glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, 1.0));
+    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, -1.0));
 
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
 
@@ -423,12 +429,11 @@ public:
         double d = t * (far_plane - real_near_plane) + real_near_plane;
 
         glm::vec3 win(i,j,t);
-	glm::vec4 position(glm::unProject(win, model_view_matrix, projection, viewport), 0.0);
-        //gluUnProject(i, j, t, glm::value_ptr(model_view_matrix), glm::value_ptr(projection), (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
+	glm::vec4 position(glm::unProject(win, identity, projection, viewport), 0.0);
 
 	// Transform back into camera coordinates
-	glm::vec4 position_cc = /*axis_flip * */ model_view_matrix * position;
-	position_cc.z = d;
+	position.z = -d; // Substitute in our correct distance value.
+	glm::vec4 position_cc = axis_flip * position;
 
 	//std::cerr << glm::to_string(position) << "    ->    " << glm::to_string(position_cc) << std::endl; 
 
@@ -545,7 +550,11 @@ public:
     out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
     out << "WIDTH " << data_count / 4 << std::endl;
     out << "HEIGHT " << 1 << std::endl;
+
+    glm::dquat camera_inverse = glm::inverse(camera);
     out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
+    //out << "VIEWPOINT " << 0.0 << ' ' << 0.0 << ' ' << 0.0 << ' '
+    //	<< camera_inverse.w << ' ' << camera_inverse.x << ' ' << camera_inverse.y << ' ' << camera.z << std::endl;
     out << "POINTS " << data_count / 4 << std::endl;
     out << "DATA binary" << std::endl;
     out.write((char*)(data), sizeof(float)*data_count);
