@@ -270,18 +270,24 @@ int main(int argc, char** argv) {
     if (save_and_quit || (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)) {
 
       // First, re-render without the box, or it'll show up in our point cloud.
-      scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
+      if (physics_port) {
+	scene.render(&shader_program, fov, object, translation, sensor);
+	scene.save_point_cloud(object, translation, sensor, save_and_quit ? pcd_filename : "buffer", width, height);
+	scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer", object, translation, sensor);
+      } else {
+        scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
 
-      scene.save_point_cloud(mrx, mry, mrz,
+        scene.save_point_cloud(mrx, mry, mrz,
 			     camera_x, camera_y, camera_z,
 			     crx, cry, crz,
 			     save_and_quit ? pcd_filename : "buffer",
                              width,
                              height);
-      scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
+        scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
                                          mrx, mry, mrz,
 					 camera_x, camera_y, camera_z,
 					 crx, cry, crz);
+      }
 
       s_key_pressed = false;
 
