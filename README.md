@@ -28,31 +28,49 @@ Capabilities Office.
 
 ## Requirements ##
 
-GLIDAR has been tested on a Mac OS X Mavericks installation with
-Homebrew, and on an Ubuntu (Trusty) machine. It has the following
-requirements:
+GLIDAR has been tested on Mac OS X Mavericks and Yosemite
+installations with Homebrew, and on a couple of Ubuntu (Trusty and
+later) machine. It has the following requirements:
 
 * CMake
 * GLSL 1.2* support (in graphics card)
 * GLFW 3
 * GLEW 1.10
+* GLM 0.9.6+
 * Magick++ 6
 * [ASSIMP](http://assimp.sourceforge.net/)*
+* ZeroMQ 4
 * Any version of PCL*
 
+
 Items with asterisks are pretty much essential, but you might be able
-to get the code working with older versions of ImageMagick/Magick++
-and GLFW.
+to get the code working with older versions of ImageMagick/Magick++.
 
 There's an older version of the software which uses a regular Makefile
 instead of CMake, so it's also possible &mdash; but inadvisable
 &mdash; to use GLIDAR without CMake.
 
-Note that the PCL requirement is essentially just for command line
-argument parsing. PCL makes this super easy, but PCL also takes
+ZeroMQ is needed if you want to publish or subscribe to point
+clouds. I used to have this as an optional dependency, but it became
+too difficult to maintain all of the different `#ifdef` macros. ZeroMQ
+is not hard to install, but if you can't get it for your operating
+system, you can probably just strip the ZeroMQ-related lines out of
+GLIDAR and write your own.
+
+Finally, note that the PCL requirement is essentially just for command
+line argument parsing. PCL makes this super easy, but PCL also takes
 forever to install. If you would like to implement a different command
 line argument parsing specification in lieu of PCL, please feel free
 to submit a patch.
+
+### Dependency Installation ###
+
+If you're using Ubuntu, you may need to go and find the correct
+version of GLFW (I think it's libglfw3-dev or something like that) and
+install it by hand (using `dpkg`).
+
+For those who are Mac OS X users, I recommend using homebrew to
+install any dependencies.
 
 ## Installation ##
 
@@ -73,17 +91,24 @@ If cmake reported no error messages, you can now build:
 
     make
     
-It is *not* recommended that GLIDAR be installed using `make install`. 
-GLIDAR expects certain resources in its source tree.
+It is *not* recommended that GLIDAR be installed using `make install`.
+GLIDAR expects certain resources (e.g., models and textures) in its
+source tree.
 
 ## Usage ##
 
 GLIDAR should be run in the root of its source tree (not from the
-build directory), via command line.
+`build/` directory), via command line.
 
 ### Example Usage: Linux/Unix ###
 
-  build/glidar ISS\ models\ 2011/Objects/Modules/MLM/MLM.lwo --scale 0.24 --dr 0.1,0.01,0 --r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
+Without publishing:
+
+    build/glidar models/bunny.ply --scale 0.24 --dr 0.1,0.01,0 --r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
+
+With publishing:
+
+    build/glidar models/bunny.ply --scale 0.24 --dr 0.1,0.01,0 --r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
 
 ### Running on Mac OS X ###
 
@@ -141,7 +166,16 @@ Other limitations:
 * It takes a long time to write the range images to PCD files.
 * The model can be rotated, and the sensor can be moved towards or away from the model; but the sensor itself cannot
   rotate or move in other directions. No sensor path can be programmed yet.
-* Model bump textures are not currently utilized.  
+* Model bump textures are not currently utilized.
+
+Improvements needed:
+
+* When I first wrote GLIDAR, it used &mdash; almost exclusively
+  &mdash; homogeneous transforms for arranging objects. Later, I added
+  quaternion support, but the quaternion rendering is only implemented
+  for pipelines that use ZeroMQ. It'd be extremely simple to implement
+  non-pipeline rendering using quaternions &mdash; and that would
+  enable us to remove some old and fragile code.
 
 ### Examples ###
 
@@ -166,7 +200,7 @@ feel free to ask.
 
 ## License ##
 
-Copyright 2014, John O. Woods, Ph.D.; West Virginia University Applied
+Copyright 2014 - 2015, John O. Woods, Ph.D.; West Virginia University Applied
 Space Exploration Laboratory; and West Virginia Robotic Technology
 Center. All rights reserved.
 

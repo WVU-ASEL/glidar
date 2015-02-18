@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, John O. Woods, Ph.D.
+ * Copyright (c) 2014 - 2015, John O. Woods, Ph.D.
  *   West Virginia University Applied Space Exploration Lab
  *   West Virginia Robotic Technology Center
  * All rights reserved.
@@ -58,7 +58,7 @@ enum recv_result_t {
 void sync_subscribe(zmq::socket_t& subscriber, zmq::socket_t& sync_client, int port, int highwater, char type);
 
 
-/* \brief Open a subscription socket which doesn't make the publisher
+/** \brief Open a subscription socket which doesn't make the publisher
  * wait for synchronization.
  * \param[in] socket through which to subscribe
  * \param[in] socket through which to synchronize

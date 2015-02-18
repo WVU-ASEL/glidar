@@ -35,12 +35,27 @@
 
 #include <fstream>
 
+/** Class which handles shader programs.
+ *
+ */
 class Shader {
 public:
+  /** Initialize a new (empty) shader program.
+   */
   Shader() { }
+
+  /** Constructor, which basically just calls init().
+   *
+   * @param[in] Vertex shader program filename.
+   * @param[in] Fragment shader program filename.
+   */ 
   Shader(const char * vs_filename, const char * fs_filename) {
     init(vs_filename, fs_filename);
   }
+
+  /** Unregister shaders from OpenGL (cleanup).
+   *
+   */
   ~Shader() {
     glDetachShader(shader_id, fragment_shader);
     glDetachShader(shader_id, vertex_shader);
@@ -50,6 +65,12 @@ public:
     glDeleteProgram(shader_id);
   }
 
+
+  /** Initialize a shader program using a vertex shader and a fragment shader (called directly by constructor).
+   *
+   * @param[in] Vertex shader program filename.
+   * @param[in] Fragment shader program filename.
+   */
   void init(const char * vs_filename, const char * fs_filename) {
     check_gl_error();
     vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -80,20 +101,38 @@ public:
     check_gl_error();
   }
 
+
+  /** Bind this shader program for rendering.
+   *
+   */
   void bind() {
     check_gl_error();
     glUseProgram(shader_id);
     check_gl_error();
   }
+
+  /** Unbind this shader program so it isn't used for rendering.
+   *
+   */
   void unbind() {
     check_gl_error();
     glUseProgram(0);
     check_gl_error();
   }
 
-  GLuint id() { return shader_id; }
+  /** Get the OpenGL id for this shader program.
+   *
+   */
+  GLuint id() {
+    return shader_id;
+  }
 
 private:
+  /** Attempt to make sure the shader compiles correctly.
+   *
+   * @param[in] OpenGL shader ID number.
+   * @param[in] shader filename (optional, in case a shader is provided some other way).
+   */
   void validate_shader(GLuint shader, const char * filename = NULL) {
     const unsigned int BUFFER_SIZE = 512;
     char buffer[BUFFER_SIZE];
@@ -106,6 +145,10 @@ private:
   }
 
 
+  /** Attempt to make sure some GLSL program is valid.
+   *
+   * @param[in] GLSL program ID number used by OpenGL.
+   */
   void validate_program(GLuint program) {
     const unsigned int BUFFER_SIZE = 512;
     char buffer[BUFFER_SIZE];
@@ -124,6 +167,13 @@ private:
   }
 
 
+  /** Load a shader program into a string.
+   *
+   * @param[in] shader program file path.
+   * @param[out] source code of shader program, once loaded.
+   *
+   * \returns Whether opening the shader program and loading it was successful or not (not including validation).
+   */
   bool load(const char * path, std::string& shader_code) {
     std::ifstream shader_stream(path, std::ios::in);
 

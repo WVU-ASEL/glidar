@@ -1,20 +1,37 @@
 /*
+ * Copyright (c) 2014 - 2015, John O. Woods, Ph.D.
+ *   West Virginia University Applied Space Exploration Lab
+ *   West Virginia Robotic Technology Center
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation are those
+ * of the authors and should not be interpreted as representing official policies,
+ * either expressed or implied, of the FreeBSD Project.
+ */
 
-	Copyright 2011 Etay Meiri
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+// This file based loosely on a GPLv3 example given by Etay Meiri. I hope I've
+// changed it sufficiently that it's no longer a derivative work, but please feel
+// free to contact me if you feel I've violated the spirit of the GPL.
 
 #ifndef TEXTURE_H
 #define	TEXTURE_H
@@ -27,9 +44,17 @@
 #include "gl_error.h"
 #include "shader.h"
 
-class Texture
-{
+/** For loading and rendering textures. 
+ * 
+ * Each texture represents a specific aspect of the object's lighting/surface model (analogous to a 
+ * bidirectional reflectance function), or helps define its normal maps.
+ */
+class Texture {
 public:
+  /** Constructor for textures.
+   *
+   * @param[in] vector of filenames where the textures may be found.
+   */
   Texture(const std::vector<std::string>& filenames_)
   : filenames(filenames_),
     texture_object_handles(new GLuint[filenames_.size()]),
@@ -37,6 +62,9 @@ public:
     blobs(filenames_.size())
   { }
 
+  /** Load textures and register them with OpenGL.
+   *
+   */
   bool load() {
     for (size_t i = 0; i < filenames.size(); ++i) {
       try {
@@ -71,6 +99,10 @@ public:
   }
 
 
+  /** Bind a GLSL shader program for rendering.
+   *
+   * @param[in] Pointer to a shader program that we want to bind.
+   */
   void bind(Shader* shader_program = NULL) {
     const char* UNIFORM_NAMES[] = {"diffuse_texture_color",
         "specular_texture_color"};

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, John O. Woods, Ph.D.
+ * Copyright (c) 2014 - 2015, John O. Woods, Ph.D.
  *   West Virginia University Applied Space Exploration Lab
  *   West Virginia Robotic Technology Center
  * All rights reserved.

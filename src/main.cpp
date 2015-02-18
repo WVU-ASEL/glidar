@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, John O. Woods, Ph.D.
+ * Copyright (c) 2014 - 2015, John O. Woods, Ph.D.
  *   West Virginia University Applied Space Exploration Lab
  *   West Virginia Robotic Technology Center
  * All rights reserved.
@@ -48,6 +48,11 @@ using std::endl;
 
 const float SPEED = 36.0f;
 
+
+/*
+ * These next few functions are for catching Ctrl+C interrupts. If GLIDAR is killed and has things
+ * that are subscribing to it, we want them to be notified that they should end.
+ */
 static int s_interrupted = 0;
 static void s_signal_handler(int signal_value) {
   s_interrupted = 1;
@@ -62,34 +67,23 @@ static void s_catch_signals(void) {
 }
 
 
-recv_result_t receive_model_view_matrices(zmq::socket_t& subscriber, Eigen::Matrix4f& inverse_model, Eigen::Matrix4f& view, int flags = 0) {
-  boost::shared_ptr<pose_message_t> poses;
-  recv_result_t r = receive_poses(subscriber, poses, flags);
-  if (r == RECV_SUCCESS) {
-    memcpy(inverse_model.data(), &((*poses)[0].pose), sizeof(float)*16);
-    memcpy(view.data(),          &((*poses)[1].pose), sizeof(float)*16);
-  }
-
-  std::cerr << "Receive model:" << inverse_model << std::endl;
-  std::cerr << "Receive view:" << view << std::endl;
-  return r;
-}
-
-
-recv_result_t receive_model_view_matrices(zmq::socket_t& subscriber, glm::mat4& inverse_model, glm::mat4& view, int flags = 0) {
-  boost::shared_ptr<pose_message_t> poses;
-  recv_result_t r = receive_poses(subscriber, poses, flags);
-  if (r == RECV_SUCCESS) {
-    memcpy(glm::value_ptr(inverse_model), &((*poses)[0].pose), sizeof(float)*16);
-    memcpy(glm::value_ptr(view),          &((*poses)[1].pose), sizeof(float)*16);
-  }
-
-  std::cerr << "view: " << glm::to_string(view) << std::endl;
-  return r;
-}
-
-
-recv_result_t receive_pose_components(zmq::socket_t& subscriber, timestamp_t& timestamp, glm::dquat& object, glm::dvec3& translation, glm::dquat& sensor, int flags = 0) {
+/** Calls receive_vector in order to obtain a timestamp and 11 floating-point values (the client 
+ *  rotation, the translation, and the sensor rotation).
+ *
+ * @param[in] a subscription socket.
+ * @param[out] a timestamp.
+ * @param[out] rotation of the client object (the object you're viewing).
+ * @param[out] translation between the sensor and the client.
+ * @param[out] rotation of the sensor (through which you're viewing).
+ * @param[in] flags to pass to the socket (generally 0, which is the default; or ZMQ_NOBLOCK if you want real-time)
+ * \returns An enumerator from receive_vector indicating whether a shutdown is in order, there was success, etc.
+ */
+recv_result_t receive_pose_components(zmq::socket_t& subscriber,
+				      timestamp_t& timestamp,
+				      glm::dquat& object,
+				      glm::dvec3& translation,
+				      glm::dquat& sensor,
+				      int flags = 0) {
   std::vector<double> v;
   recv_result_t r = receive_vector(subscriber, timestamp, v, flags);
   if (r == RECV_SUCCESS) {
@@ -110,16 +104,28 @@ recv_result_t receive_pose_components(zmq::socket_t& subscriber, timestamp_t& ti
 }
 
 
-// Most of main() ganked from here: https://code.google.com/p/opengl-tutorial-org/source/browse/tutorial01_first_window/tutorial01.cpp
+/** Main.
+ *
+ * Sets everything up and then loops --- pretty standard OpenGL --- to intercept keypresses, mouseclicks, to modify the scene,
+ * and to redraw.
+ *
+ * @param[in] Number of arguments from the command line.
+ * @param[in] Array of character pointers to the command line arguments.
+ *
+ * \returns An integer describing the exit status.
+ */
 int main(int argc, char** argv) {
 
-  // Always require that the model filename be given.
+  // Always expect the first argument to be the 3D model's filename.
   std::string model_filename;
   if (argc < 2) {
     std::cerr << "Error: Expected model filename as first argument." << std::endl;
     exit(-1);
   } else model_filename = argv[1];
 
+  /*
+   * 1. Read standard rendering command line arguments.
+   */
   float model_scale_factor = 1.0;
   float model_rotate_x = 0.0, model_rotate_y = 0.0, model_rotate_z = 0.0;
   float camera_rotate_x = 0.0, camera_rotate_y = 0.0, camera_rotate_z = 0.0;
@@ -147,7 +153,7 @@ int main(int argc, char** argv) {
   pcl::console::parse(argc, argv, "-h", height);
 
   /*
-   * If ZeroMQ is included, let's publish the data.
+   * 2. If ZeroMQ is included, let's allow GLIDAR to be connected to a loop and send and receive data. Read those command line arguments.
    */
   int port = 0, physics_port = 0;
   int frequency = 15;
@@ -167,18 +173,23 @@ int main(int argc, char** argv) {
   zmq::socket_t sync_service(context, ZMQ_REP);
   zmq::socket_t sync_client(context, ZMQ_REQ);
   //PoseLogger logger("sensor.pose");
-    
+
+  /*
+   * 3. Use ZeroMQ to publish and subscribe, both functions waiting for synchronization before allowing us to proceed forward.
+   */
   if (port)
     sync_publish(publisher, sync_service, port, subscribers);
 
   if (physics_port)
     sync_subscribe(subscriber, sync_client, physics_port, highwater_mark, 'v');
-  
+
+  /* This is where we start to catch signals. */
   s_catch_signals ();
 
   std::cerr << "Loading model "      << model_filename << std::endl;
   std::cerr << "Scaling model by "   << model_scale_factor << std::endl;
 
+  /* Send along command line arguments to ImageMagick in case it has anything it needs to process. Never used this; haven't tested it. */
   Magick::InitializeMagick(*argv);
 
   if (!glfwInit()) {
@@ -190,9 +201,11 @@ int main(int argc, char** argv) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2); // We want OpenGL 2.1 (latest that will work on my MBA's Intel Sandy Bridge GPU)
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 
-  //std::cerr << "OpenGL version " << glGetString(GL_VERSION) << std::endl;
+  // std::cerr << "OpenGL version " << glGetString(GL_VERSION) << std::endl;
 
-  // Try to open a window
+  /*
+   * 4. Attempt to create a window that we can draw our LIDAR images in.
+   */
   GLFWwindow* window = glfwCreateWindow(width, height, "LIDAR Simulator", NULL, NULL);
   if (!window) {
     std::cerr << "Failed to open GLFW window." << std::endl;
@@ -208,7 +221,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Ensure we can capture the escape key being pressed below
+  // Ensure we can capture keypresses.
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
   Scene scene(model_filename, model_scale_factor, camera_z);
@@ -219,7 +232,6 @@ int main(int argc, char** argv) {
   float delta_time = current_time - last_time;
 
   Shader shader_program("shaders/spotv.glsl", "shaders/lidarf.glsl");
-  //Shader shader_program("lidarv.glsl", "lidarf.glsl");
   
   float mrx = model_init_rotate_x,
         mry = model_init_rotate_y,
@@ -228,9 +240,6 @@ int main(int argc, char** argv) {
     cry = camera_init_rotate_y,
     crz = camera_init_rotate_z;
 
-  //scene.projection_setup(fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
-
-  bool mouse_button_pressed = false;
   bool s_key_pressed = false;
 
   bool save_and_quit = false;
@@ -241,9 +250,25 @@ int main(int argc, char** argv) {
   unsigned short backspaces = 0;
  
   std::cerr << "Maximum buffer size: " << width * height * 4 * sizeof(float) << std::endl;
-  
+
+  /*
+   * 5. Main event loop.
+   */
   do {
 
+    /*
+     * If we're not using a physics simulator, we have limited options.
+     *
+     * * The '-' key moves the camera forward.
+     * * The '+' key moves the camera backwards.
+     * * The 's' key spits out a PCD file containing a point cloud representation of the current view.
+     *   That will go in buffer.pcd most of the time.
+     * * If you specified an output filename using --pcd, it's going to basically press the 's' key for you
+     *   and then exit.
+     *
+     * Each of the following if-statements records the key-press. I'm not 100% sure what happens if you hold 
+     * down 's', but you should be able to hold down + and - to move steadily.
+     */
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
       camera_z -= delta_time * SPEED;
     }
@@ -257,24 +282,38 @@ int main(int argc, char** argv) {
       s_key_pressed = true;
     }
 
+    /*
+     * If we are using a physics simulator, we want to receive updated pose information from it each time
+     * we iterate through the loop. It might also provide us with a shutdown message, so we need to process
+     * that as well.
+     */
     recv_result_t receive_result;
     glm::dquat object, sensor;
     glm::dvec3 translation;
     if (physics_port) {
       receive_result = receive_pose_components(subscriber, timestamp, object, translation, sensor);
-      //receive_result = receive_model_view_matrices(subscriber, inverse_model, view);
       if (receive_result == RECV_SHUTDOWN) s_interrupted = true;
     }
 
-    // Write a PCD file if the user presses the 's' key.
+    /*
+     * Handle key-releases, or the case where the user provided a --pcd file output (then we'll exist after
+     * the first loop iteration.
+     */
     if (save_and_quit || (s_key_pressed && glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)) {
 
-      // First, re-render without the box, or it'll show up in our point cloud.
+      // Physics simulator: Render before we try to save. Then save the point cloud and transformation information.
+      // I think this is for the case where you might want to use your physics simulator to run a Monte Carlo, as
+      // it appears to quit after rendering.
       if (physics_port) {
 	scene.render(&shader_program, fov, object, translation, sensor);
 	scene.save_point_cloud(object, translation, sensor, save_and_quit ? pcd_filename : "buffer", width, height);
 	scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer", object, translation, sensor);
-      } else {
+      }
+
+      // WITHOUT physics simulator: use specific command line options.
+      // This code needs to be replaced with something that takes quaternions instead of Euler angles, but I
+      // haven't had the motivation.
+      else {
         scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
 
         scene.save_point_cloud(mrx, mry, mrz,
@@ -294,17 +333,16 @@ int main(int argc, char** argv) {
       if (save_and_quit) saved_now_quit = true;
     }
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS) {
-      mouse_button_pressed = true;
-    }
 
+    // Physics simulator: Just alter scene and render based on the information we get from the physics simulator.
     if (physics_port) {
-      //Eigen::Vector3f angle = pose.topLeftCorner<3,3>().eulerAngles(0,1,2);
-      //scene.move_camera_to(&shader_program, pose(0,3), pose(1,3), pose(2,3));
-      //scene.render(&shader_program, fov, rx, ry, rz, angle[0] * 180.0/M_PI, angle[1] * 180.0/M_PI, angle[2] * 180.0/M_PI, false);
+
       scene.render(&shader_program, fov, object, translation, sensor);
       
-    } else {
+    }
+
+    // NO physics simulator: Alter scene based on command line arguments and then render.
+    else {
       mrx += model_rotate_x * delta_time;
       mry += model_rotate_y * delta_time;
       mrz += model_rotate_z * delta_time;
@@ -316,17 +354,13 @@ int main(int argc, char** argv) {
       scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz); // render without the box
     }
 
+    /*
+     * If we're publishing, we should send the point cloud every few loop iterations.
+     *
+     * TODO: Point cloud publishing code needs to go in its own function, as this is cluttery.
+     */
     if (loopcount == frequency && port) {
       if (!physics_port) ++timestamp;
-
-      //if (!physics_port)
-        //pose = scene.get_pose(rx, ry, rz, crx, cry, crz);
-
-      // Write timestamp and pose to the logger.
-      //      logger.log(timestamp, pose);
-
-      // Transmit the true pose.
-      //      send_pose(publisher, pose, timestamp);
 
       // Now indicate that we're sending a point cloud
       const char TYPE = 'c';
@@ -359,6 +393,10 @@ int main(int argc, char** argv) {
       backspaces = length.size();      
     }
 
+    /*
+     * If the user hits Ctrl+C or ESC, let's indicate that we're shutting down (to any subscribers) and then
+     * exit without bothering to save anything.
+     */
     if (s_interrupted || glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window)) {
       if (port > 0) {
 	std::cerr << "Interrupt received, sending shutdown signal..." << std::flush;
@@ -371,7 +409,7 @@ int main(int argc, char** argv) {
     glfwSwapBuffers(window);
     glfwPollEvents();
 
-    // update timers so we can do camera motion
+    // update timers so we can do camera motion (non-physics simulator version)
     last_time = current_time;
     current_time = glfwGetTime();
 
@@ -381,7 +419,9 @@ int main(int argc, char** argv) {
   
   } while (!saved_now_quit);
 
+  // Close the window.
   glfwTerminate();
 
+  // Success!
   return 0;
 }

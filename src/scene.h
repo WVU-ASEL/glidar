@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, John O. Woods, Ph.D.
+ * Copyright (c) 2014 - 2015, John O. Woods, Ph.D.
  *   West Virginia University Applied Space Exploration Lab
  *   West Virginia Robotic Technology Center
  * All rights reserved.
@@ -52,15 +52,32 @@
 const float ASPECT_RATIO = 1.0;
 const float CAMERA_Y     = 0.05;
 const unsigned int BOX_HALF_DIAGONAL = 174;
-// const GLfloat MIN_NEAR_PLANE = 0.01; // now defined in mesh.h
 
 const double RADIANS_PER_DEGREE = M_PI / 180.0;
 const float NEAR_PLANE_FACTOR = 0.99;
 const float FAR_PLANE_FACTOR = 1.01;
 
 
+/** Simple object and sensor OpenGL scene, which handles loading and rendering meshes, and also writing out point clouds.
+ *
+ * This file currently contains two independent render strategies -- one from before I started using quaternions and
+ * one from after. They should produce the same result; I used the non-quaternion method to check the quaternion method.
+ * Eventually, we want to remove the non-quaternion method altogether.
+ *
+ * Another thing: A lot of these functions don't need to be public. This program went through many, many iterations, and
+ * over the course of those iterations, I made nearly everything public so I could play with things more easily.
+ */
 class Scene {
 public:
+  /** Constructor for the scene, which does most of the rendering work.
+   *
+   * This function sets near_plane_bound, real_near_plane, and far_plane, which end up not being used after initial setup.
+   * Eventually they should be removed.
+   *
+   * @param[in] 3D model file to load.
+   * @param[in] amount by which to scale the model we load.
+   * @param[in] initial camera distance.
+   */
   Scene(const std::string& filename, float scale_factor_, float camera_d_)
   : scale_factor(scale_factor_),
     projection(1.0),
@@ -75,10 +92,12 @@ public:
     std::cerr << "Object dimensions as modeled: " << dimensions.x << '\t' << dimensions.y << '\t' << dimensions.z << std::endl;
     glm::vec3 centroid = mesh.centroid();
     std::cerr << "Center of object as modeled: " << centroid.x << '\t' << centroid.y << '\t' << centroid.z << std::endl;
-    std::cerr << "NOTE: Object will be re-centered prior to rendering." << std::endl;
   }
 
 
+  /** Set OpenGL options.
+   *
+   */
   void gl_setup() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -103,6 +122,8 @@ public:
 
 
 
+  /** Old version of projection_setup (no quaternions). DEPRECATED.
+   */
   void projection_setup(float fov, float model_rx, float model_ry, float model_rz, float cam_x, float cam_y, float cam_z, float cam_rx, float cam_ry, float cam_rz) {
     gl_setup();
 
@@ -129,6 +150,12 @@ public:
   }
 
 
+  /** Setup the perspective projection matrix, and figure out where to draw the near and far planes.
+   *
+   * @param[in] Field of view of the sensor.
+   * @param[in] Model matrix inverse.
+   * @param[in] View matrix.
+   */
   void projection_setup(float fov, const glm::mat4& inverse_model, const glm::mat4& view_physics) {
     gl_setup();
 
@@ -147,6 +174,10 @@ public:
   }
 
 
+  /** Setup the lighting for the scene, which is basically just the LIDAR laser source.
+   *
+   * @param[in] the GLSL shader program.
+   */
   void gl_setup_lighting(Shader* shader_program) {
     float light_position[] = {0.0, 0.0, 0.0, 1.0};
     float light_direction[] = {0.0, 0.0, 1.0, 0.0};
@@ -163,6 +194,15 @@ public:
   }
 
 
+  /** Render the scene using the model and view matrices.
+   *
+   *Sets up the model view matrix, calls projection_setup, calculates a normal matrix.
+   *
+   * @param[in] the GLSL shader program.
+   * @param[in] the field of view of the sensor.
+   * @param[in] model matrix inverse.
+   * @param[in] view matrix.
+   */
   void render(Shader* shader_program, float fov, const glm::mat4& inverse_model_physics, const glm::mat4& view_physics) {
     glm::mat4 inverse_model = glm::scale(glm::mat4(1), glm::vec3(1.0/scale_factor, 1.0/scale_factor, 1.0/scale_factor)) *
       inverse_model_physics;
@@ -211,6 +251,14 @@ public:
   }
   
 
+  /** Render the scene, calculating the view and inverse model matrices from attitudes (as quaternions) and translations.
+   *
+   * @param[in] the GLSL shader program.
+   * @param[in] the field of view of the sensor.
+   * @param[in] client object attitude.
+   * @param[in] translation between the model and the sensor.
+   * @param[in] sensor attitude.
+   */
   void render(Shader* shader_program, float fov, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
     glm::mat4 view          = glm::mat4(glm::mat4_cast(camera_q) * glm::translate(glm::dmat4(1.0), translate));
     glm::mat4 inverse_model = glm::mat4(glm::mat4_cast(glm::inverse(model_q)));
@@ -218,7 +266,9 @@ public:
     render(shader_program, fov, inverse_model, view);
   }
 
-  
+
+  /** Old version of render (no quaternions). DEPRECATED.
+   */
   void render(Shader* shader_program, float fov, float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz) {
     projection_setup(fov, model_rx, model_ry, model_rz, camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz);
 
@@ -267,8 +317,10 @@ public:
   }
 
 
-  /*
-   * Write the translation and rotation information to a file.
+  /** Write the translation and rotation information to a file. DEPRECATED.
+   *
+   * This version still requires command line arguments. I haven't deleted it because I have some old Monte Carlo simulations that require it
+   * but you shouldn't write any code that makes use of it.
    */
   void save_transformation_metadata(const std::string& basename, float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz) {
     std::string filename = basename + ".transform";
@@ -282,8 +334,10 @@ public:
   }
 
 
-  /*
-   * Write the pose information to a file.
+  /** Write the pose information to a file.
+   *
+   * @param[in] file basename (without the extension).
+   * @param[in] the pose information to write to the file.
    */
   void save_pose_metadata(const std::string& basename, const glm::dmat4& pose) {
     std::string filename = basename + ".transform";
@@ -296,24 +350,30 @@ public:
   }
 
 
-  /*
-   * Write the translation and rotation information to a file.
+  /** Write the translation and rotation information to a file.
+   *
+   * @param[in] file basename (without the extension).
+   * @param[in] model attitude quaternion.
+   * @param[in] model-sensor translation.
+   * @param[in] sensor attitude quaternion.
    */
   void save_transformation_metadata(const std::string& basename, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
     save_pose_metadata(basename, get_model_view_matrix_without_scaling(model_q, translate, camera_q));
   }
 
 
-  /*
-   * Return the transformation metadata as a 4x4 homogeneous matrix (float).
+  /** Return the transformation metadata as a 4x4 homogeneous matrix (float).
+   *
+   * @param[in] model attitude quaternion.
+   * @param[in] model-sensor translation.
+   * @param[in] sensor attitude quaternion.
    */
   glm::mat4 get_pose(const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
     return glm::mat4(get_model_view_matrix_without_scaling(model_q, translate, camera_q));
   }
   
 
-  /*
-   * Return the transformation metadata as a 4x4 homogeneous matrix. Deprecated.
+  /** Return the transformation metadata as a 4x4 homogeneous matrix. Deprecated.
    */
   Eigen::Matrix4f get_pose(float mod_rx, float mod_ry, float mod_rz, float cam_rx, float cam_ry, float cam_rz) {
     using Eigen::Vector3f;
@@ -344,35 +404,79 @@ public:
     return result.matrix();
   }
 
-  /*
-   * Get the model view matrix before the scene is rendered.
+  /** Get the model view matrix before the scene is rendered. DEPRECATED.
    */
   glm::mat4 get_model_view_matrix(float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz) {
     return get_view_matrix(camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz) * get_model_matrix(model_rx, model_ry, model_rz);
   }
 
+  /** Gets the model view matrix without the scaling component.
+   *
+   * Used for unprojecting when we get our point cloud out.
+   *
+   * @param[in] model rotation quaternion.
+   * @param[in] model-sensor translation.
+   * @param[in] sensor rotation quaternion.
+   *
+   * \returns a 4x4 homogeneous transformation (the model-view matrix).
+   */
   glm::dmat4 get_model_view_matrix_without_scaling(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera) {
     return get_view_matrix(translate, camera) * glm::mat4_cast(model);
   }
 
   
+  /** Gets the model view matrix.
+   *
+   * @param[in] model rotation quaternion.
+   * @param[in] model-sensor translation.
+   * @param[in] sensor rotation quaternion.
+   *
+   * \returns a 4x4 homogeneous transformation (the model-view matrix).
+   */  
   glm::dmat4 get_model_view_matrix(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera) {
     return get_view_matrix(translate, camera) * get_model_matrix(model);
   }
 
+  /** Gets the view matrix.
+   *
+   * @param[in] model-sensor translation.
+   * @param[in] sensor rotation quaternion.
+   *
+   * \returns a 4x4 homogeneous transformation (the model-view matrix).
+   */  
   glm::dmat4 get_view_matrix(const glm::dvec3& translate, const glm::dquat& camera) {
     return glm::mat4_cast(camera) * glm::translate(glm::dmat4(1.0), translate);
   }
 
+  /** Gets the inverse model transformation matrix.
+   *
+   * @param[in] model attitude quaternion.
+   *
+   * \returns a 4x4 homogeneous transformation (the inverse model matrix).
+   */  
   glm::dmat4 get_inverse_model_matrix(const glm::dquat& model) {
     return glm::scale(glm::dmat4(1.0), glm::dvec3(1.0/scale_factor, 1.0/scale_factor, 1.0/scale_factor)) *
       get_inverse_model_matrix_without_scaling(model);
   }
 
+
+  /** Gets the inverse model transformation matrix (without scaling).
+   *
+   * @param[in] model attitude quaternion.
+   *
+   * \returns a 4x4 homogeneous transformation (the inverse model matrix sans scaling component).
+   */  
   glm::dmat4 get_inverse_model_matrix_without_scaling(const glm::dquat& model) {
     return glm::mat4_cast(glm::inverse(model));
   }
 
+
+  /** Gets the model transformation matrix.
+   *
+   * @param[in] model attitude quaternion.
+   *
+   * \returns a 4x4 homogeneous transformation (the model matrix).
+   */  
   glm::dmat4 get_model_matrix(const glm::dquat& model) {
     return glm::mat4_cast(model) * glm::scale(glm::dmat4(1.0), glm::dvec3(scale_factor, scale_factor, scale_factor));
   }
@@ -388,8 +492,7 @@ public:
   }
 
 
-  /*
-   * Get the model matrix before the scene is rendered.
+  /** Get the model matrix before the scene is rendered. DEPRECATED.
    */
   glm::mat4 get_model_matrix(float rx, float ry, float rz) {
     glm::mat4 model = glm::rotate(glm::mat4(1.0f), (float)(rz), glm::vec3(0.0, 0.0, 1.0)) *
@@ -400,10 +503,19 @@ public:
     return model;
   }
 
-  /*
-   * Writes the point cloud to a buffer as x,y,z,i (in binary). Returns a size_t
-   * indicating the number of floating point entries written (note:
-   * not the number of bytes written).
+  /** Write only the data component of a point cloud to a buffer (no headers).
+   *
+   * Writes the point cloud to a buffer as x,y,z,i (in binary). Returns a size_t indicating the number of floating point 
+   * entries written (note: not the number of bytes written).
+   *
+   * @param[in] model attitude quaternion.
+   * @param[in] model-sensor translation.
+   * @param[in] camera (sensor) attitude quaternion.
+   * @param[out] the data buffer to which we wrote (pre-allocated by the calling function!)
+   * @param[in] width of the sensor viewport
+   * @parma[in] height of the sensor viewport
+   *
+   * \returns The total number of entries written to data (not the number of floats, mind you).
    */  
   size_t write_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, float* data, unsigned int width, unsigned int height) {
     glm::ivec4 viewport;
@@ -450,12 +562,9 @@ public:
   }
 
   
-  /*
-   * Writes the point cloud to a buffer as x,y,z,i. Returns a size_t
-   * indicating the number of floating point entries written (note:
-   * not the number of bytes written).
-   *
-   * This version is deprecated.
+  /** Writes the point cloud to a buffer as x,y,z,i. Returns a size_t
+   *  indicating the number of floating point entries written (note:
+   *  not the number of bytes written). DEPRECATED.
    */
   size_t write_point_cloud(float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz, float* data, unsigned int width, unsigned int height) {
     // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
@@ -505,8 +614,7 @@ public:
   
 
 
-  /*
-  * Write the current color buffer as a PCD (point cloud file) (binary non-organized version). Deprecated.
+  /** Write the current color buffer as a PCD (point cloud file) (binary non-organized version). DEPRECATED.
   */
   void save_point_cloud(float mrx, float mry, float mrz, float cx, float cy, float cz, float crx, float cry, float crz, const std::string& basename, unsigned int width, unsigned int height) {
     std::string filename = basename + ".pcd";
@@ -533,8 +641,14 @@ public:
   }
 
 
-  /*
-   * Write the current color buffer as a PCD (point cloud file).
+  /** Write the current color buffer as a PCD (point cloud file).
+   *
+   * @param[in] model attitude quaternion.
+   * @param[in] model-sensor translation.
+   * @param[in] sensor attitude quaternion.
+   * @param[in] output file basename (without the extension, which will be .pcd)
+   * @param[in] width of the viewport.
+   * @param[in] height of the viewport.
    */
   void save_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, const std::string& basename, unsigned int width, unsigned int height) {
    std::string filename = basename + ".pcd";
