@@ -40,7 +40,6 @@ varying vec4 specular;
 varying vec3 half_vector;
 varying vec3 ec_pos;
 
-//uniform vec4 camera_pos;
 uniform float far_plane;
 uniform float near_plane;
 uniform mat4 ViewMatrix;
@@ -56,6 +55,7 @@ uniform sampler2D specular_texture_color;
 //  return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
 //}
 
+// Some other random number generators we can use for noise models:
 float rand_positive(vec2 co) {
   return noise1(co) * 0.5 + 0.5;
 }
@@ -66,20 +66,19 @@ float rand_0_mean(vec2 co) {
 
 void main() {
   const float GLOBAL_AMBIENT = 0.2;
-  vec4 color = gl_FrontMaterial.emission; //vec4(gl_FrontMaterial.emission.r, 0.0, 0.0, 1.0);
-  vec4 diffuse_color = diffuse * texture2D(diffuse_texture_color, gl_TexCoord[0].st); //vec4((diffuse * texture2D(diffuse_texture_color, gl_TexCoord[0].st)).r, 0.0, 0.0, 1.0);
-  vec4 spec_color = specular * texture2D(specular_texture_color, gl_TexCoord[1].st); //vec4((specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r, 0.0, 0.0, 1.0);
-  //float bounce = (specular * texture2D(specular_texture_color, gl_TexCoord[1].st)).r * rand_positive(gl_FragCoord.xy);
+  vec4 color = gl_FrontMaterial.emission;
+  vec4 diffuse_color = diffuse * texture2D(diffuse_texture_color, gl_TexCoord[0].st);
+  vec4 spec_color = specular * texture2D(specular_texture_color, gl_TexCoord[1].st);
 
   vec3 spot_dir = vec3(ViewMatrix * vec4(gl_LightSource[0].spotDirection, 0.0));
-  vec3 light_dir = -ec_pos; //spot_dir - ec_pos;
+  vec3 light_dir = -ec_pos;
 
   float dist = length(light_dir);
 
   vec3 n = normalize(normal0);
   float n_dot_hv = max(dot(n, normalize(half_vector)), 0.0);
 
-  color = GLOBAL_AMBIENT * ambient; //vec4(color.r + GLOBAL_AMBIENT * ambient.r, 0.0, 0.0, 1.0);
+  color = GLOBAL_AMBIENT * ambient;
 
   if (n_dot_hv > 0.0) {
 
@@ -92,7 +91,8 @@ void main() {
       color += att * (diffuse_color * n_dot_hv + ambient);
       color += att * spec_color * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
-      //color.r *= rand_positive(gl_FragCoord.xy);
+      // To use noise model, uncomment:
+      //dist -= 0.02 * rand_positive(gl_FragCoord.xy);
 
       float corrected_dist = spot_effect * dist;
       float dist_ratio = 65536.0f * (corrected_dist - near_plane) / (far_plane - near_plane);
@@ -107,5 +107,4 @@ void main() {
   }
 
   gl_FragColor = color;
-  //gl_FragDepth = dist;
 }

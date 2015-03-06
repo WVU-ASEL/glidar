@@ -223,8 +223,6 @@ public:
 
     float bound = (model_to_object_coords * (camera_pos - nearest)).z;
 
-    std::cerr << "bound = " << bound << std::endl;
-
     if (bound <= 0) {
       std::cerr << "WARNING: Nearest point on object is behind the sensor, which makes for an invalid near plane setting. Using MIN_NEAR_PLANE="
                 << MIN_NEAR_PLANE << " distance units for the bound. Actual near plane will be slightly closer, depending on your value for NEAR_PLANE_FACTOR." 

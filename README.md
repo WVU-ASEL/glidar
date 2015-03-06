@@ -104,11 +104,11 @@ GLIDAR should be run in the root of its source tree (not from the
 
 Without publishing:
 
-    build/glidar models/bunny.ply --scale 0.24 --dr 0.1,0.01,0 --r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
+    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
 
 With publishing:
 
-    build/glidar models/bunny.ply --scale 0.24 --dr 0.1,0.01,0 --r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
+    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
 
 ### Running on Mac OS X ###
 

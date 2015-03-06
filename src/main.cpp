@@ -206,7 +206,7 @@ int main(int argc, char** argv) {
   /*
    * 4. Attempt to create a window that we can draw our LIDAR images in.
    */
-  GLFWwindow* window = glfwCreateWindow(width, height, "LIDAR Simulator", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(width, height, "GLIDAR", NULL, NULL);
   if (!window) {
     std::cerr << "Failed to open GLFW window." << std::endl;
     glfwTerminate();

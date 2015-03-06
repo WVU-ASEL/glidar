@@ -111,8 +111,6 @@ public:
     glDisable(GL_POLYGON_SMOOTH);
     glDisable(GL_MULTISAMPLE);
     glEnable(GL_BLEND);
-    //glBlendFuncSeparate(GL_ONE, GL_ONE, GL_SRC_ALPHA, GL_SRC_ALPHA);
-    //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glDepthFunc(GL_LEQUAL);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
@@ -128,25 +126,18 @@ public:
     gl_setup();
 
     // Figure out where the near plane belongs.
-    //glGetFloatv(GL_MODELVIEW_MATRIX, static_cast<GLfloat*>(glm::value_ptr(model_view)));
     glm::mat4 model = get_model_matrix(model_rx, model_ry, model_rz);
 
     // Get the camera position in model coordinates so we can find the near plane.
     glm::mat4 inverse_model = glm::inverse(model);
     glm::vec4 camera_pos    = glm::vec4(cam_x, cam_y, cam_z, 1.0f);
     glm::vec4 camera_pos_mc = inverse_model * camera_pos;
-    //glm::vec4 camera_dir_oc = inverse_model_view * camera_dir;
 
     near_plane_bound = mesh.near_plane_bound(model, camera_pos_mc);
     real_near_plane = near_plane_bound * NEAR_PLANE_FACTOR;
     far_plane = mesh.far_plane_bound(model, camera_pos_mc) * FAR_PLANE_FACTOR;
-    std::cerr << "Near plane: " << near_plane_bound << "\tFar plane: " << far_plane << std::endl;
 
     projection =  glm::perspective((float)(fov * M_PI / 180.0f), (float)(ASPECT_RATIO), (float)(real_near_plane), (float)(far_plane));
-    //gluPerspective(fov, ASPECT_RATIO, real_near_plane, far_plane);
-
-    // Store a copy of the current projection matrix.
-    //glGetFloatv( GL_PROJECTION_MATRIX, glm::value_ptr(projection));
   }
 
 
@@ -168,7 +159,6 @@ public:
     near_plane_bound = mesh.near_plane_bound(model, camera_pos_mc);
     real_near_plane = near_plane_bound * NEAR_PLANE_FACTOR;
     far_plane = mesh.far_plane_bound(model, camera_pos_mc) * FAR_PLANE_FACTOR;
-    std::cerr << "Near plane: " << near_plane_bound << "\tFar plane: " << far_plane << std::endl;
 
     projection = glm::perspective<float>(fov * M_PI / 180.0, ASPECT_RATIO, real_near_plane, far_plane);
   }
@@ -215,9 +205,7 @@ public:
 
     gl_setup_lighting(shader_program);
 
-    glm::mat4 model = glm::inverse(inverse_model);//model_physics * glm::scale(glm::mat4(1.0f), glm::vec3(scale_factor, scale_factor, scale_factor));
-    //std::cerr << "Model: " << glm::to_string(model) << std::endl;
-    //std::cerr << "View: " << glm::to_string(view_physics) << std::endl;
+    glm::mat4 model = glm::inverse(inverse_model);
 
     GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
     GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
@@ -235,8 +223,6 @@ public:
     glm::mat3 normal_matrix = glm::inverseTranspose(glm::mat3(model_view));
     GLint normal_id = glGetUniformLocation(shader_program->id(), "NormalMatrix");
     glUniformMatrix3fv(normal_id, 1, false, static_cast<GLfloat*>(glm::value_ptr(normal_matrix)));
-
-    //std::cerr << "Model view: " << glm::to_string(model_view) << std::endl;
     
     glm::mat4 model_view_projection = projection * model_view;
     
@@ -290,8 +276,6 @@ public:
     GLint v_id = glGetUniformLocation(shader_program->id(), "ViewMatrix");
     glUniformMatrix4fv(v_id, 1, GL_FALSE, &view[0][0]);
 
-    std::cerr << "View: " << glm::to_string(view) << std::endl;
-
     glm::mat4 model_view = get_model_view_matrix(model_rx, model_ry, model_rz, camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz);
 
     GLint mv_id = glGetUniformLocation(shader_program->id(), "ModelViewMatrix");
@@ -301,8 +285,6 @@ public:
     GLint normal_id = glGetUniformLocation(shader_program->id(), "NormalMatrix");
     glUniformMatrix3fv(normal_id, 1, false, static_cast<GLfloat*>(glm::value_ptr(normal_matrix)));
     
-    std::cerr << "Model view: " << glm::to_string(model_view) << std::endl;
-    //std::cerr << "Projection: " << glm::to_string(projection) << std::endl;
     glm::mat4 model_view_projection = projection * model_view;
     GLint mvp_id = glGetUniformLocation(shader_program->id(), "ModelViewProjectionMatrix");
     glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &model_view_projection[0][0]);
@@ -499,7 +481,7 @@ public:
       glm::rotate(glm::mat4(1.0f), (float)(ry), glm::vec3(0.0, 1.0, 0.0)) *
       glm::rotate(glm::mat4(1.0f), (float)(rx), glm::vec3(1.0, 0.0, 0.0)) *
       glm::scale(glm::mat4(1.0f), glm::vec3(scale_factor, scale_factor, scale_factor));
-    std::cerr << "Model: " << glm::to_string(model) << std::endl;
+
     return model;
   }
 
@@ -537,7 +519,7 @@ public:
         
         int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
         if (gb == 0) continue;
-        double t = gb / 65536.0; // 2.0 * gb / 65536.0 - 1.0;
+        double t = gb / 65536.0;
         double d = t * (far_plane - real_near_plane) + real_near_plane;
 
         glm::vec3 win(i,j,t);
@@ -547,7 +529,6 @@ public:
 	position.z = -d; // Substitute in our correct distance value.
 	glm::vec4 position_cc = axis_flip * position;
 
-	//std::cerr << glm::to_string(position) << "    ->    " << glm::to_string(position_cc) << std::endl; 
 
         data[data_count]   =  position_cc[0];
         data[data_count+1] =  position_cc[1];
@@ -587,18 +568,15 @@ public:
         
         int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
         if (gb == 0) continue;
-        double t = gb / 65536.0; // 2.0 * gb / 65536.0 - 1.0;
+        double t = gb / 65536.0;
         double d = t * (far_plane - real_near_plane) + real_near_plane;
 
         glm::vec3 win(i,j,t);
 	glm::vec4 position(glm::unProject(win, model_view_matrix, projection, viewport), 0.0);
-        //gluUnProject(i, j, t, glm::value_ptr(model_view_matrix), glm::value_ptr(projection), (int*)&viewport, &(position[0]), &(position[1]), &(position[2]) );
-
+	
 	// Transform back into camera coordinates
 	glm::vec4 position_cc = axis_flip * model_view_matrix * position;
 	position_cc.z = d;
-
-	//std::cerr << glm::to_string(position) << "    ->    " << glm::to_string(position_cc) << std::endl; 
 
         data[data_count]   =  position_cc[0];
         data[data_count+1] =  position_cc[1];
@@ -667,8 +645,6 @@ public:
 
     glm::dquat camera_inverse = glm::inverse(camera);
     out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
-    //out << "VIEWPOINT " << 0.0 << ' ' << 0.0 << ' ' << 0.0 << ' '
-    //	<< camera_inverse.w << ' ' << camera_inverse.x << ' ' << camera_inverse.y << ' ' << camera.z << std::endl;
     out << "POINTS " << data_count / 4 << std::endl;
     out << "DATA binary" << std::endl;
     out.write((char*)(data), sizeof(float)*data_count);

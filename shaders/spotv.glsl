@@ -63,7 +63,6 @@ void main() {
   // the light and the viewer. For most 3D sensors, however, we assume the light source and
   // the viewer are in the same location.
   half_vector = normalize(ec_light_dir);
-  //half_vector = normalize(ec_light_dir + ec_light_dir);
 
   gl_TexCoord[0].st = diffuse_tex;
   gl_TexCoord[1].st = specular_tex;
