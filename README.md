@@ -5,7 +5,6 @@ A simple OpenGL-based LIDAR simulator
 * [John O. Woods, Ph.D](http://github.com/mohawkjohn) &mdash; john.o.woods@gmail.com
 * [WVU Applied Space Exploration Laboratory](http://asel.mae.wvu.edu/)
 * [West Virginia Robotic Technology Center](http://wvrtc.com/)
-* [NASA GSFC Satellite Servicing Capabilities Office](http://ssco.gsfc.nasa.gov/)
 
 ## Description ##
 
