@@ -39,7 +39,7 @@
 #include "service/subscribe.h"
 #include "scene.h"
 #include "mesh.h"
-//#include "service/pose_logger.h"
+#include "pcl.h"
 
 
 using std::cerr;
@@ -127,23 +127,23 @@ int main(int argc, char** argv) {
    * 1. Read standard rendering command line arguments.
    */
   float model_scale_factor = 1.0;
-  float model_rotate_x = 0.0, model_rotate_y = 0.0, model_rotate_z = 0.0;
-  float camera_rotate_x = 0.0, camera_rotate_y = 0.0, camera_rotate_z = 0.0;
-  float model_init_rotate_x = 0.0, model_init_rotate_y = 0.0, model_init_rotate_z = 0.0;
-  float camera_init_rotate_x = 0.0, camera_init_rotate_y = 0.0, camera_init_rotate_z = 0.0;
-  float camera_x = 0.0, camera_y = 0.0, camera_z = 1000.0;
   unsigned int width = 256, height = 256;
   float fov = 20.0;
   timestamp_t timestamp = 0;
   std::string pcd_filename;
 
+  glm::dquat object(1.0, 0.0, 0.0, 0.0), sensor(1.0, 0.0, 0.0, 0.0);
+  glm::dvec3 object_rotate(0.0, 0.0, 0.0), sensor_rotate(0.0, 0.0, 0.0);
+  glm::dvec3 translation(0.0, 0.0, 0.0);
+  pcl::console::parse_4x_arguments(argc, argv, "--model-r", object);
+  pcl::console::parse_3x_arguments(argc, argv, "--model-dr", object_rotate);
+  pcl::console::parse_4x_arguments(argc, argv, "--camera-r", sensor);
+  pcl::console::parse_3x_arguments(argc, argv, "--camera-dr", sensor_rotate);
+
   pcl::console::parse(argc, argv, "--scale", model_scale_factor);
-  pcl::console::parse_3x_arguments(argc, argv, "--model-r", model_init_rotate_x, model_init_rotate_y, model_init_rotate_z);
-  pcl::console::parse_3x_arguments(argc, argv, "--model-dr", model_rotate_x, model_rotate_y, model_rotate_z);
-  pcl::console::parse(argc, argv, "--camera-z", camera_z);
-  pcl::console::parse_3x_arguments(argc, argv, "--camera-xyz", camera_x, camera_y, camera_z);
-  pcl::console::parse_3x_arguments(argc, argv, "--camera-r", camera_init_rotate_x, camera_init_rotate_y, camera_init_rotate_z);
-  pcl::console::parse_3x_arguments(argc, argv, "--camera-dr", camera_rotate_x, camera_rotate_y, camera_rotate_z);
+  pcl::console::parse(argc, argv, "--camera-z", translation[2]);
+  translation = -translation;
+
   pcl::console::parse(argc, argv, "--fov", fov);
   pcl::console::parse(argc, argv, "--pcd", pcd_filename);
 
@@ -153,7 +153,7 @@ int main(int argc, char** argv) {
   pcl::console::parse(argc, argv, "-h", height);
 
   /*
-   * 2. If ZeroMQ is included, let's allow GLIDAR to be connected to a loop and send and receive data. Read those command line arguments.
+   * 2. If ZeroQ is included, let's allow GLIDAR to be connected to a loop and send and receive data. Read those command line arguments.
    */
   int port = 0, physics_port = 0;
   int frequency = 15;
@@ -224,7 +224,7 @@ int main(int argc, char** argv) {
   // Ensure we can capture keypresses.
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-  Scene scene(model_filename, model_scale_factor, camera_z);
+  Scene scene(model_filename, model_scale_factor, -translation[2]);
 
 
   double last_time = 0,
@@ -232,13 +232,6 @@ int main(int argc, char** argv) {
   float delta_time = current_time - last_time;
 
   Shader shader_program("shaders/spotv.glsl", "shaders/lidarf.glsl");
-  
-  float mrx = model_init_rotate_x,
-        mry = model_init_rotate_y,
-        mrz = model_init_rotate_z,
-    crx = camera_init_rotate_x,
-    cry = camera_init_rotate_y,
-    crz = camera_init_rotate_z;
 
   bool s_key_pressed = false;
 
@@ -270,12 +263,12 @@ int main(int argc, char** argv) {
      * down 's', but you should be able to hold down + and - to move steadily.
      */
     if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS) {
-      camera_z -= delta_time * SPEED;
+      translation[2] -= delta_time * SPEED;
     }
 
 
     if (glfwGetKey(window, GLFW_KEY_EQUAL) == GLFW_PRESS) {
-      camera_z += delta_time * SPEED;
+      translation[2] += delta_time * SPEED;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
@@ -288,11 +281,14 @@ int main(int argc, char** argv) {
      * that as well.
      */
     recv_result_t receive_result;
-    glm::dquat object, sensor;
-    glm::dvec3 translation;
     if (physics_port) {
       receive_result = receive_pose_components(subscriber, timestamp, object, translation, sensor);
       if (receive_result == RECV_SHUTDOWN) s_interrupted = true;
+      
+      std::cerr << "Physics instructing a render with the following:\n";
+      std::cerr << "  object:\t" << to_string(object) << std::endl;
+      std::cerr << "  transl:\t" << glm::to_string(translation) << std::endl;
+      std::cerr << "  sensor:\t" << to_string(sensor) << std::endl;
     }
 
     /*
@@ -304,55 +300,33 @@ int main(int argc, char** argv) {
       // Physics simulator: Render before we try to save. Then save the point cloud and transformation information.
       // I think this is for the case where you might want to use your physics simulator to run a Monte Carlo, as
       // it appears to quit after rendering.
-      if (physics_port) {
-	scene.render(&shader_program, fov, object, translation, sensor);
-	scene.save_point_cloud(object, translation, sensor, save_and_quit ? pcd_filename : "buffer", width, height);
-	scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer", object, translation, sensor);
-      }
 
-      // WITHOUT physics simulator: use specific command line options.
-      // This code needs to be replaced with something that takes quaternions instead of Euler angles, but I
-      // haven't had the motivation.
-      else {
-        scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz);
-
-        scene.save_point_cloud(mrx, mry, mrz,
-			     camera_x, camera_y, camera_z,
-			     crx, cry, crz,
-			     save_and_quit ? pcd_filename : "buffer",
-                             width,
-                             height);
-        scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer",
-                                         mrx, mry, mrz,
-					 camera_x, camera_y, camera_z,
-					 crx, cry, crz);
-      }
+      scene.render(&shader_program, fov, object, translation, sensor);
+      scene.save_point_cloud(object, translation, sensor, save_and_quit ? pcd_filename : "buffer", width, height);
+      scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer", object, translation, sensor);
 
       s_key_pressed = false;
 
       if (save_and_quit) saved_now_quit = true;
     }
 
-
-    // Physics simulator: Just alter scene and render based on the information we get from the physics simulator.
-    if (physics_port) {
-
-      scene.render(&shader_program, fov, object, translation, sensor);
+    // No Physics simulator: alter scene according to command line arguments.
+    if (!physics_port) {
       
+      object = quaternion_change(object, object_rotate, delta_time);
+      sensor = quaternion_change(sensor, sensor_rotate, delta_time);
+	
+      std::cerr << "Command line instructing a render with the following:\n";
+      std::cerr << "  object:\t" << to_string(object) << std::endl;
+      std::cerr << "  transl:\t" << glm::to_string(translation) << std::endl;
+      std::cerr << "  sensor:\t" << to_string(sensor) << std::endl;
     }
+    // If physics simulator is given, we'll just alter based on what we get from physics.
 
-    // NO physics simulator: Alter scene based on command line arguments and then render.
-    else {
-      mrx += model_rotate_x * delta_time;
-      mry += model_rotate_y * delta_time;
-      mrz += model_rotate_z * delta_time;
 
-      crx += camera_rotate_x * delta_time;
-      cry += camera_rotate_y * delta_time;
-      crz += camera_rotate_z * delta_time;
-      
-      scene.render(&shader_program, fov, mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz); // render without the box
-    }
+    // Render regardless.
+    scene.render(&shader_program, fov, object, translation, glm::conjugate(sensor));
+
 
     /*
      * If we're publishing, we should send the point cloud every few loop iterations.
@@ -360,7 +334,7 @@ int main(int argc, char** argv) {
      * TODO: Point cloud publishing code needs to go in its own function, as this is cluttery.
      */
     if (loopcount == frequency && port) {
-      if (!physics_port) ++timestamp;
+      if (!physics_port) ++timestamp; // Need a timestamp for when we're not getting one from physics.
 
       // Now indicate that we're sending a point cloud
       const char TYPE = 'c';
@@ -369,9 +343,7 @@ int main(int argc, char** argv) {
       void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
       float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
 
-      size_t cloud_size = physics_port ?
-	scene.write_point_cloud(object, translation, sensor, cloud_buffer, width, height) : 
-	scene.write_point_cloud(mrx, mry, mrz, camera_x, camera_y, camera_z, crx, cry, crz, cloud_buffer, width, height);
+      size_t cloud_size = scene.write_point_cloud(object, translation, sensor, cloud_buffer, width, height);
       
       size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) +
 	cloud_size * sizeof(float);

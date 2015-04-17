@@ -46,6 +46,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <cmath>
 #include "mesh.h"
+#include "quaternion.h"
 
 #define _USE_MATH_DEFINES
 
@@ -86,6 +87,7 @@ public:
     real_near_plane(std::max(MIN_NEAR_PLANE, camera_d_-BOX_HALF_DIAGONAL)),
     far_plane(camera_d_+BOX_HALF_DIAGONAL)
   {
+    std::cerr << "camera_d = " << camera_d << std::endl;
     mesh.load_mesh(filename);
 
     glm::vec3 dimensions = mesh.dimensions();
@@ -120,27 +122,6 @@ public:
 
 
 
-  /** Old version of projection_setup (no quaternions). DEPRECATED.
-   */
-  void projection_setup(float fov, float model_rx, float model_ry, float model_rz, float cam_x, float cam_y, float cam_z, float cam_rx, float cam_ry, float cam_rz) {
-    gl_setup();
-
-    // Figure out where the near plane belongs.
-    glm::mat4 model = get_model_matrix(model_rx, model_ry, model_rz);
-
-    // Get the camera position in model coordinates so we can find the near plane.
-    glm::mat4 inverse_model = glm::inverse(model);
-    glm::vec4 camera_pos    = glm::vec4(cam_x, cam_y, cam_z, 1.0f);
-    glm::vec4 camera_pos_mc = inverse_model * camera_pos;
-
-    near_plane_bound = mesh.near_plane_bound(model, camera_pos_mc);
-    real_near_plane = near_plane_bound * NEAR_PLANE_FACTOR;
-    far_plane = mesh.far_plane_bound(model, camera_pos_mc) * FAR_PLANE_FACTOR;
-
-    projection =  glm::perspective((float)(fov * M_PI / 180.0f), (float)(ASPECT_RATIO), (float)(real_near_plane), (float)(far_plane));
-  }
-
-
   /** Setup the perspective projection matrix, and figure out where to draw the near and far planes.
    *
    * @param[in] Field of view of the sensor.
@@ -151,9 +132,7 @@ public:
     gl_setup();
 
     glm::mat4 inverse_view = glm::inverse(view_physics);
-
     glm::vec4 camera_pos_mc = inverse_model * inverse_view * glm::vec4(0.0, 0.0, 0.0, 1.0);
-    
     glm::mat4 model = glm::inverse(inverse_model);
     
     near_plane_bound = mesh.near_plane_bound(model, camera_pos_mc);
@@ -246,73 +225,10 @@ public:
    * @param[in] sensor attitude.
    */
   void render(Shader* shader_program, float fov, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
-    glm::mat4 view          = glm::mat4(glm::mat4_cast(camera_q) * glm::translate(glm::dmat4(1.0), translate));
+    glm::mat4 view          = glm::mat4(get_view_matrix(translate, camera_q));
     glm::mat4 inverse_model = glm::mat4(glm::mat4_cast(glm::inverse(model_q)));
 
     render(shader_program, fov, inverse_model, view);
-  }
-
-
-  /** Old version of render (no quaternions). DEPRECATED.
-   */
-  void render(Shader* shader_program, float fov, float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz) {
-    projection_setup(fov, model_rx, model_ry, model_rz, camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz);
-
-    // clear window with the current clearing color, and clear the depth buffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Setup model view matrix: All future transformations will affect our models (what we draw).
-    glUseProgram(shader_program->id());
-
-    gl_setup_lighting(shader_program);
-
-    GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
-    GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
-
-    glUniform1fv(far_plane_id, 1, &far_plane);
-    glUniform1fv(near_plane_id, 1, &real_near_plane);
-
-    glm::mat4 view = get_view_matrix(camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz);
-    GLint v_id = glGetUniformLocation(shader_program->id(), "ViewMatrix");
-    glUniformMatrix4fv(v_id, 1, GL_FALSE, &view[0][0]);
-
-    glm::mat4 model_view = get_model_view_matrix(model_rx, model_ry, model_rz, camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz);
-
-    GLint mv_id = glGetUniformLocation(shader_program->id(), "ModelViewMatrix");
-    glUniformMatrix4fv(mv_id, 1, GL_FALSE, &model_view[0][0]);
-
-    glm::mat3 normal_matrix = glm::inverseTranspose(glm::mat3(model_view));
-    GLint normal_id = glGetUniformLocation(shader_program->id(), "NormalMatrix");
-    glUniformMatrix3fv(normal_id, 1, false, static_cast<GLfloat*>(glm::value_ptr(normal_matrix)));
-    
-    glm::mat4 model_view_projection = projection * model_view;
-    GLint mvp_id = glGetUniformLocation(shader_program->id(), "ModelViewProjectionMatrix");
-    glUniformMatrix4fv(mvp_id, 1, GL_FALSE, &model_view_projection[0][0]);
-
-    // Render the mesh.
-    mesh.render(shader_program);
-
-    check_gl_error();
-
-    // flush drawing commands
-    glFlush();
-  }
-
-
-  /** Write the translation and rotation information to a file. DEPRECATED.
-   *
-   * This version still requires command line arguments. I haven't deleted it because I have some old Monte Carlo simulations that require it
-   * but you shouldn't write any code that makes use of it.
-   */
-  void save_transformation_metadata(const std::string& basename, float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz) {
-    std::string filename = basename + ".transform";
-    std::ofstream out(filename.c_str());
-
-    out << camera_x << '\t' << camera_y << '\t' << camera_z << std::endl;
-    out << model_rx << '\t' << model_ry << '\t' << model_rz << std::endl;
-    out << camera_rx << '\t' << camera_ry << '\t' << camera_rz << std::endl;
-
-    out.close();
   }
 
 
@@ -355,43 +271,6 @@ public:
   }
   
 
-  /** Return the transformation metadata as a 4x4 homogeneous matrix. Deprecated.
-   */
-  Eigen::Matrix4f get_pose(float mod_rx, float mod_ry, float mod_rz, float cam_rx, float cam_ry, float cam_rz) {
-    using Eigen::Vector3f;
-    using Eigen::Affine;
-    using Eigen::Transform;
-    using Eigen::Translation3f;
-    using Eigen::AngleAxisf;
-    using Eigen::Matrix4f;
-    using Eigen::Scaling;
-   
-    AngleAxisf model_rx(mod_rx * M_PI / 180.0, Vector3f::UnitX());
-    AngleAxisf model_ry(mod_ry * M_PI / 180.0, Vector3f::UnitY());
-    AngleAxisf model_rz(mod_rz * M_PI / 180.0, Vector3f::UnitZ());
-
-    AngleAxisf camera_rx(cam_rx * M_PI / 180.0, Vector3f::UnitX());
-    AngleAxisf camera_ry(cam_ry * M_PI / 180.0, Vector3f::UnitY());
-    AngleAxisf camera_rz(cam_rz * M_PI / 180.0, Vector3f::UnitZ());
-    
-    Translation3f model_to_camera_translate(Vector3f(0.0, 0.0, -camera_d));
-    AngleAxisf    model_to_camera_rotate(M_PI, Vector3f::UnitY());
-  
-    Eigen::Transform<float,3,Affine> result;
-    result =  camera_rz * camera_ry * camera_rx *
-              model_to_camera_rotate *
-              model_to_camera_translate *
-              model_rz * model_ry * model_rx;
-  
-    return result.matrix();
-  }
-
-  /** Get the model view matrix before the scene is rendered. DEPRECATED.
-   */
-  glm::mat4 get_model_view_matrix(float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz) {
-    return get_view_matrix(camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz) * get_model_matrix(model_rx, model_ry, model_rz);
-  }
-
   /** Gets the model view matrix without the scaling component.
    *
    * Used for unprojecting when we get our point cloud out.
@@ -430,28 +309,6 @@ public:
     return glm::mat4_cast(camera) * glm::translate(glm::dmat4(1.0), translate);
   }
 
-  /** Gets the inverse model transformation matrix.
-   *
-   * @param[in] model attitude quaternion.
-   *
-   * \returns a 4x4 homogeneous transformation (the inverse model matrix).
-   */  
-  glm::dmat4 get_inverse_model_matrix(const glm::dquat& model) {
-    return glm::scale(glm::dmat4(1.0), glm::dvec3(1.0/scale_factor, 1.0/scale_factor, 1.0/scale_factor)) *
-      get_inverse_model_matrix_without_scaling(model);
-  }
-
-
-  /** Gets the inverse model transformation matrix (without scaling).
-   *
-   * @param[in] model attitude quaternion.
-   *
-   * \returns a 4x4 homogeneous transformation (the inverse model matrix sans scaling component).
-   */  
-  glm::dmat4 get_inverse_model_matrix_without_scaling(const glm::dquat& model) {
-    return glm::mat4_cast(glm::inverse(model));
-  }
-
 
   /** Gets the model transformation matrix.
    *
@@ -462,28 +319,7 @@ public:
   glm::dmat4 get_model_matrix(const glm::dquat& model) {
     return glm::mat4_cast(model) * glm::scale(glm::dmat4(1.0), glm::dvec3(scale_factor, scale_factor, scale_factor));
   }
-  
-  /*
-   * Get the view matrix before the scene is rendered.
-   */
-  glm::mat4 get_view_matrix(float camera_x, float camera_y, float camera_z, float rx, float ry, float rz) {
-    return glm::rotate(glm::mat4(1.0f), (float)(rz), glm::vec3(0.0, 0.0, 1.0)) *
-      glm::rotate(glm::mat4(1.0f), (float)(ry), glm::vec3(0.0, 1.0, 0.0)) *
-      glm::rotate(glm::mat4(1.0f), (float)(rx), glm::vec3(1.0, 0.0, 0.0)) *
-      glm::translate(glm::mat4(1.0f), glm::vec3(-camera_x, -camera_y, -camera_z));
-  }
 
-
-  /** Get the model matrix before the scene is rendered. DEPRECATED.
-   */
-  glm::mat4 get_model_matrix(float rx, float ry, float rz) {
-    glm::mat4 model = glm::rotate(glm::mat4(1.0f), (float)(rz), glm::vec3(0.0, 0.0, 1.0)) *
-      glm::rotate(glm::mat4(1.0f), (float)(ry), glm::vec3(0.0, 1.0, 0.0)) *
-      glm::rotate(glm::mat4(1.0f), (float)(rx), glm::vec3(1.0, 0.0, 0.0)) *
-      glm::scale(glm::mat4(1.0f), glm::vec3(scale_factor, scale_factor, scale_factor));
-
-    return model;
-  }
 
   /** Write only the data component of a point cloud to a buffer (no headers).
    *
@@ -509,7 +345,7 @@ public:
     
     unsigned char rgba[4*width*height];
 
-    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, -1.0));
+    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, -1.0)); // FIXME: should this last one be +1.0?
 
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
 
@@ -542,81 +378,6 @@ public:
     return data_count;    
   }
 
-  
-  /** Writes the point cloud to a buffer as x,y,z,i. Returns a size_t
-   *  indicating the number of floating point entries written (note:
-   *  not the number of bytes written). DEPRECATED.
-   */
-  size_t write_point_cloud(float model_rx, float model_ry, float model_rz, float camera_x, float camera_y, float camera_z, float camera_rx, float camera_ry, float camera_rz, float* data, unsigned int width, unsigned int height) {
-    // Get matrices we need for reversing the model-view-projection-clip-viewport transform.
-    glm::ivec4 viewport;
-    glm::mat4 model_view_matrix = get_model_view_matrix(model_rx, model_ry, model_rz, camera_x, camera_y, camera_z, camera_rx, camera_ry, camera_rz);
-
-    glGetIntegerv( GL_VIEWPORT, (int*)&viewport );
-
-    size_t data_count = 0;
-    
-    unsigned char rgba[4*width*height];
-
-    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, 1.0));
-
-    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
-
-    for (size_t i = 0; i < height; ++i) {
-      for (size_t j = 0; j < width; ++j) {
-        size_t pos = 4*(j*height+i);
-        
-        int gb = rgba[pos + 1] * 255 + rgba[pos + 2];
-        if (gb == 0) continue;
-        double t = gb / 65536.0;
-        double d = t * (far_plane - real_near_plane) + real_near_plane;
-
-        glm::vec3 win(i,j,t);
-	glm::vec4 position(glm::unProject(win, model_view_matrix, projection, viewport), 0.0);
-	
-	// Transform back into camera coordinates
-	glm::vec4 position_cc = axis_flip * model_view_matrix * position;
-	position_cc.z = d;
-
-        data[data_count]   =  position_cc[0];
-        data[data_count+1] =  position_cc[1];
-        data[data_count+2] =  position_cc[2];
-        data[data_count+3] =  rgba[pos + 0] / 256.0;
-
-        data_count += 4;
-      }
-    }
-
-    return data_count;    
-  }
-  
-
-
-  /** Write the current color buffer as a PCD (point cloud file) (binary non-organized version). DEPRECATED.
-  */
-  void save_point_cloud(float mrx, float mry, float mrz, float cx, float cy, float cz, float crx, float cry, float crz, const std::string& basename, unsigned int width, unsigned int height) {
-    std::string filename = basename + ".pcd";
-
-    std::cerr << "Saving point cloud..." << std::endl;
-
-    float* data       = new float[4*width*height + 4];
-    size_t data_count = write_point_cloud(mrx, mry, mrz, cx, cy, cz, crx, cry, crz, data, width, height);
-    
-    std::ofstream out(filename.c_str());
-    
-    // Print PCD header
-    out << "VERSION .7\nFIELDS x y z intensity\nSIZE 4 4 4 4\nTYPE F F F F\nCOUNT 1 1 1 1\n";
-    out << "WIDTH " << data_count / 4 << std::endl;
-    out << "HEIGHT " << 1 << std::endl;
-    out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
-    out << "POINTS " << data_count / 4 << std::endl;
-    out << "DATA binary" << std::endl;
-    out.write((char*)(data), sizeof(float)*data_count);
-
-    out.close();
-
-    std::cerr << "Saved '" << filename << "'" << std::endl;
-  }
 
 
   /** Write the current color buffer as a PCD (point cloud file).

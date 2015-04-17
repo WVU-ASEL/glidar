@@ -103,11 +103,11 @@ GLIDAR should be run in the root of its source tree (not from the
 
 Without publishing:
 
-    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
+    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
 
 With publishing:
 
-    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
+    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
 
 ### Running on Mac OS X ###
 
@@ -122,8 +122,10 @@ The first argument, the model filename, is mandatory. Additional
 arguments are also accepted:
 
 * `--scale`: decimal value by which the model should be scaled (default: 1.0)
-* `--dr`: rotation rate about _x_, _y_, and _z_ axes respectively (default: 0)
-* `--r`: initial model rotation about _x_, _y_, and _z_ axes respectively (default: 0)
+* `--model-dr`: rotation rate as an axis divided by an angle (default: 0)
+* `--camera-dr`: same, but for the camera
+* `--model-r`: initial model rotation as an angle-axis (angle, xyz vector; default: 0)
+* `--camera-r`: same, but for the camera
 * `--camera-z`: sensor's initial distance from the object, typically in meters (default: 1000)
 * `--width`, `--height`: sensor resolution (default: 256)
 * `--fov`: sensor field-of-view (default: 20 degrees)
