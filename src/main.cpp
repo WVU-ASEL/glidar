@@ -142,7 +142,6 @@ int main(int argc, char** argv) {
 
   pcl::console::parse(argc, argv, "--scale", model_scale_factor);
   pcl::console::parse(argc, argv, "--camera-z", translation[2]);
-  translation = -translation;
 
   pcl::console::parse(argc, argv, "--fov", fov);
   pcl::console::parse(argc, argv, "--pcd", pcd_filename);
@@ -302,7 +301,7 @@ int main(int argc, char** argv) {
       // it appears to quit after rendering.
 
       scene.render(&shader_program, fov, object, translation, sensor);
-      scene.save_point_cloud(object, translation, sensor, save_and_quit ? pcd_filename : "buffer", width, height);
+      scene.save_point_cloud(save_and_quit ? pcd_filename : "buffer", width, height);
       scene.save_transformation_metadata(save_and_quit ? pcd_filename : "buffer", object, translation, sensor);
 
       s_key_pressed = false;
@@ -325,7 +324,7 @@ int main(int argc, char** argv) {
 
 
     // Render regardless.
-    scene.render(&shader_program, fov, object, translation, glm::conjugate(sensor));
+    scene.render(&shader_program, fov, object, translation, sensor);
 
 
     /*
@@ -343,7 +342,7 @@ int main(int argc, char** argv) {
       void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
       float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
 
-      size_t cloud_size = scene.write_point_cloud(object, translation, sensor, cloud_buffer, width, height);
+      size_t cloud_size = scene.write_point_cloud(cloud_buffer, width, height);
       
       size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) +
 	cloud_size * sizeof(float);

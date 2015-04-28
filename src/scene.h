@@ -225,8 +225,10 @@ public:
    * @param[in] sensor attitude.
    */
   void render(Shader* shader_program, float fov, const glm::dquat& model_q, const glm::dvec3& translate, const glm::dquat& camera_q) {
+    glm::dquat flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
+    
     glm::mat4 view          = glm::mat4(get_view_matrix(translate, camera_q));
-    glm::mat4 inverse_model = glm::mat4(glm::mat4_cast(glm::inverse(model_q)));
+    glm::mat4 inverse_model = glm::mat4(glm::mat4_cast(model_q * flip));
 
     render(shader_program, fov, inverse_model, view);
   }
@@ -282,7 +284,8 @@ public:
    * \returns a 4x4 homogeneous transformation (the model-view matrix).
    */
   glm::dmat4 get_model_view_matrix_without_scaling(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera) {
-    return get_view_matrix(translate, camera) * glm::mat4_cast(model);
+    glm::dquat flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
+    return get_view_matrix(translate, camera) * glm::mat4_cast(model * flip);
   }
 
   
@@ -305,8 +308,33 @@ public:
    *
    * \returns a 4x4 homogeneous transformation (the model-view matrix).
    */  
-  glm::dmat4 get_view_matrix(const glm::dvec3& translate, const glm::dquat& camera) {
-    return glm::mat4_cast(camera) * glm::translate(glm::dmat4(1.0), translate);
+  glm::dmat4 get_view_matrix(const glm::dvec3& translate, const glm::dquat& camera_q) {
+    
+    // Need to ensure that translate is 0,0,-z, and adjust the camera rotation to compensate.
+    glm::dvec3 negative_z(0.0,0.0,-1.0);
+    double rotation_angle = std::acos(glm::dot(negative_z, glm::normalize(translate)));
+    glm::dvec3 rotation_axis = glm::cross(negative_z, translate);
+    double rotation_axis_length = glm::length(rotation_axis);
+    if (rotation_axis_length == 0)
+      rotation_axis = glm::dvec3(0.0, 1.0, 0.0);
+    else
+      rotation_axis = rotation_axis / rotation_axis_length;
+    
+    std::cerr << "  axis :\t" << glm::to_string(rotation_axis) << std::endl;
+    
+    std::cerr << "  angle:\t" << rotation_angle << std::endl;
+    glm::dquat rotation = glm::angleAxis<double>(-rotation_angle, rotation_axis);
+    std::cerr << " rotate:\t" << to_string(rotation) << std::endl;
+
+
+    glm::dquat flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
+    glm::dvec3 adjusted_translate = glm::mat3_cast(rotation) * translate;
+    glm::dquat adjusted_camera_q = camera_q * flip * rotation;
+
+    std::cerr << "  transl:\t" << glm::to_string(adjusted_translate) << std::endl;
+    std::cerr << "  sensor:\t" << to_string(adjusted_camera_q) << std::endl;
+    
+    return glm::mat4_cast(adjusted_camera_q) * glm::translate(glm::dmat4(1.0), adjusted_translate);
   }
 
 
@@ -317,7 +345,8 @@ public:
    * \returns a 4x4 homogeneous transformation (the model matrix).
    */  
   glm::dmat4 get_model_matrix(const glm::dquat& model) {
-    return glm::mat4_cast(model) * glm::scale(glm::dmat4(1.0), glm::dvec3(scale_factor, scale_factor, scale_factor));
+    glm::dquat flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
+    return glm::mat4_cast(model * flip) * glm::scale(glm::dmat4(1.0), glm::dvec3(scale_factor, scale_factor, scale_factor));
   }
 
 
@@ -335,7 +364,7 @@ public:
    *
    * \returns The total number of entries written to data (not the number of floats, mind you).
    */  
-  size_t write_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, float* data, unsigned int width, unsigned int height) {
+  size_t write_point_cloud(float* data, unsigned int width, unsigned int height) {
     glm::ivec4 viewport;
     glm::mat4 identity(1.0);
     
@@ -370,7 +399,7 @@ public:
         data[data_count+1] =  position_cc[1];
         data[data_count+2] =  position_cc[2];
         data[data_count+3] =  rgba[pos + 0] / 256.0;
-
+	
         data_count += 4;
       }
     }
@@ -389,13 +418,13 @@ public:
    * @param[in] width of the viewport.
    * @param[in] height of the viewport.
    */
-  void save_point_cloud(const glm::dquat& model, const glm::dvec3& translate, const glm::dquat& camera, const std::string& basename, unsigned int width, unsigned int height) {
+  void save_point_cloud(const std::string& basename, unsigned int width, unsigned int height) {
    std::string filename = basename + ".pcd";
 
     std::cerr << "Saving point cloud..." << std::endl;
 
     float* data       = new float[4*width*height + 4];
-    size_t data_count = write_point_cloud(model, translate, camera, data, width, height);
+    size_t data_count = write_point_cloud(data, width, height);
     
     std::ofstream out(filename.c_str());
     
@@ -404,7 +433,6 @@ public:
     out << "WIDTH " << data_count / 4 << std::endl;
     out << "HEIGHT " << 1 << std::endl;
 
-    glm::dquat camera_inverse = glm::inverse(camera);
     out << "VIEWPOINT 0 0 0 1 0 0 0" << std::endl;
     out << "POINTS " << data_count / 4 << std::endl;
     out << "DATA binary" << std::endl;

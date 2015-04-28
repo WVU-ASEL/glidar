@@ -103,11 +103,11 @@ GLIDAR should be run in the root of its source tree (not from the
 
 Without publishing:
 
-    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
+    build/glidar models/bunny.ply --model-dr 0.01,0.001,0 --model-r 0,0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20
 
 With publishing:
 
-    build/glidar models/bunny.ply --scale 0.24 --model-dr 0.1,0.01,0 --model-r 0,0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
+    build/glidar models/bunny.ply --model-dr 0.01,0.001,0 --model-r 0,0,0,0 --camera-z 1000 -w 256 -h 256 --fov 20 -p 65431 --pub-rate 15 --subscribers 1
 
 ### Running on Mac OS X ###
 
@@ -122,9 +122,9 @@ The first argument, the model filename, is mandatory. Additional
 arguments are also accepted:
 
 * `--scale`: decimal value by which the model should be scaled (default: 1.0)
-* `--model-dr`: rotation rate as an axis divided by an angle (default: 0)
+* `--model-dr`: rotation rate as an axis divided by an angle in model frame (default: 0)
 * `--camera-dr`: same, but for the camera
-* `--model-r`: initial model rotation as an angle-axis (angle, xyz vector; default: 0)
+* `--model-r`: initial model attitude as an angle-axis in the inertial frame (angle, xyz vector; default: 0)
 * `--camera-r`: same, but for the camera
 * `--camera-z`: sensor's initial distance from the object, typically in meters (default: 1000)
 * `--width`, `--height`: sensor resolution (default: 256)
@@ -165,9 +165,18 @@ loads the 3D models. I have not been able to get it to work with the
 Other limitations:
 
 * It takes a long time to write the range images to PCD files.
-* The model can be rotated, and the sensor can be moved towards or away from the model; but the sensor itself cannot
-  rotate or move in other directions. No sensor path can be programmed yet.
-* Model bump textures are not currently utilized.
+* The model can be rotated, and the sensor can be moved towards or
+  away from the model; but the sensor itself cannot rotate or move in
+  other directions. No sensor path can be programmed yet.
+  * Model bump textures are not currently utilized.
+
+Finally, note that the rotation (`dr`) command line arguments differ
+from the attitude arguments; the former are in model coordinates, but
+the latter are relative to the inertial (world) frame. This behavior
+isn't actually a bug; it's (quasi-)intentional. GLIDAR does not
+implement any physics, such as moments of inertia, so allowing angular
+rates to be passed from the command line is more for the purposes of
+testing a 3D model than for simulating actual rotation.
 
 Improvements needed:
 

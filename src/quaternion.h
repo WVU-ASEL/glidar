@@ -97,4 +97,15 @@ glm::dquat quaternion_change(const glm::dquat& q, const glm::dvec3& w, double dt
   return glm::normalize(r);
 }
 
+
+glm::dquat qcross(const glm::dquat& p, const glm::dquat& q) {
+  glm::dvec3 qv(q[1], q[2], q[3]);
+  glm::dvec3 pv(p[1], p[2], p[3]);
+  glm::dvec3 rv = p[0] * qv + q[0] * pv - glm::cross(pv, qv);
+  
+  glm::dquat r(p[0] * q[0] - glm::dot(pv,qv),
+	       rv[0], rv[1], rv[2]);
+  return r;
+}
+
 #endif
