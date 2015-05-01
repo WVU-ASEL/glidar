@@ -327,9 +327,10 @@ public:
     std::cerr << " rotate:\t" << to_string(rotation) << std::endl;
 
 
-    glm::dquat flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
+    glm::dquat y_flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
+    glm::dquat z_flip = glm::angleAxis<double>(M_PI/2.0, glm::dvec3(0.0,0.0,1.0));
     glm::dvec3 adjusted_translate = glm::mat3_cast(rotation) * translate;
-    glm::dquat adjusted_camera_q = camera_q * flip * rotation;
+    glm::dquat adjusted_camera_q = camera_q * z_flip * y_flip * rotation;
 
     std::cerr << "  transl:\t" << glm::to_string(adjusted_translate) << std::endl;
     std::cerr << "  sensor:\t" << to_string(adjusted_camera_q) << std::endl;
