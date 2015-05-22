@@ -135,10 +135,16 @@ int main(int argc, char** argv) {
   glm::dquat object(1.0, 0.0, 0.0, 0.0), sensor(1.0, 0.0, 0.0, 0.0);
   glm::dvec3 object_rotate(0.0, 0.0, 0.0), sensor_rotate(0.0, 0.0, 0.0);
   glm::dvec3 translation(0.0, 0.0, 0.0);
-  pcl::console::parse_4x_arguments(argc, argv, "--model-r", object);
+
+  pcl::console::parse_angle_axis(argc, argv, "--model-r", object);
+  pcl::console::parse_quaternion(argc, argv, "--model-q", object);
   pcl::console::parse_3x_arguments(argc, argv, "--model-dr", object_rotate);
-  pcl::console::parse_4x_arguments(argc, argv, "--camera-r", sensor);
+  pcl::console::parse_angle_axis(argc, argv, "--camera-r", sensor);
+  pcl::console::parse_quaternion(argc, argv, "--camera-q", sensor);
   pcl::console::parse_3x_arguments(argc, argv, "--camera-dr", sensor_rotate);
+
+  std::cerr << "Read in model rotation of " << object[0] << ", " << object[1] << ", " << object[2] << ", " << object[3] << std::endl;
+  std::cerr << "Read in camera rotation of " << sensor[0] << ", " << sensor[1] << ", " << sensor[2] << ", " << sensor[3] << std::endl;
 
   pcl::console::parse(argc, argv, "--scale", model_scale_factor);
   pcl::console::parse(argc, argv, "--camera-z", translation[2]);
@@ -158,12 +164,14 @@ int main(int argc, char** argv) {
   int frequency = 15;
   int subscribers = 1;
   int highwater_mark = 0;
+  int conflate = 0;
   pcl::console::parse(argc, argv, "--port", port);
   pcl::console::parse(argc, argv, "--physics-port", physics_port);
   pcl::console::parse(argc, argv, "-p", port);
   pcl::console::parse(argc, argv, "--subscribers", subscribers);
   pcl::console::parse(argc, argv, "--pub-rate", frequency);
   pcl::console::parse(argc, argv, "--hwm", highwater_mark);
+  pcl::console::parse(argc, argv, "--pub-conflate", conflate);
 
   zmq::context_t context(1);
   zmq::socket_t publisher(context, ZMQ_PUB);
@@ -177,7 +185,7 @@ int main(int argc, char** argv) {
    * 3. Use ZeroMQ to publish and subscribe, both functions waiting for synchronization before allowing us to proceed forward.
    */
   if (port)
-    sync_publish(publisher, sync_service, port, subscribers);
+    sync_publish(publisher, sync_service, port, subscribers, conflate);
 
   if (physics_port)
     sync_subscribe(subscriber, sync_client, physics_port, highwater_mark, 'v');
@@ -240,6 +248,7 @@ int main(int argc, char** argv) {
 
   size_t loopcount = 0;
   unsigned short backspaces = 0;
+  timestamp_t last_timestamp_sent = 0;
  
   std::cerr << "Maximum buffer size: " << width * height * 4 * sizeof(float) << std::endl;
 
@@ -284,10 +293,10 @@ int main(int argc, char** argv) {
       receive_result = receive_pose_components(subscriber, timestamp, object, translation, sensor);
       if (receive_result == RECV_SHUTDOWN) s_interrupted = true;
       
-      std::cerr << "Physics instructing a render with the following:\n";
+/*      std::cerr << "Physics instructing a render with the following:\n";
       std::cerr << "  object:\t" << to_string(object) << std::endl;
       std::cerr << "  transl:\t" << glm::to_string(translation) << std::endl;
-      std::cerr << "  sensor:\t" << to_string(sensor) << std::endl;
+      std::cerr << "  sensor:\t" << to_string(sensor) << std::endl; */
     }
 
     /*
@@ -335,33 +344,38 @@ int main(int argc, char** argv) {
     if (loopcount == frequency && port) {
       if (!physics_port) ++timestamp; // Need a timestamp for when we're not getting one from physics.
 
-      // Now indicate that we're sending a point cloud
-      const char TYPE = 'c';
+      // Make sure we don't send data, even slightly different data, with the same timestamp. Each timestamp should have
+      // one unique point cloud.
+      if (timestamp != last_timestamp_sent) {
+	// Now indicate that we're sending a point cloud
+	const char TYPE = 'c';
 
-      void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
-      void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
-      float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
+	void* send_buffer = malloc(sizeof(char) + sizeof(unsigned long) + width*height*sizeof(float)*4);
+	void* timestamp_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(char)));
+	float* cloud_buffer = static_cast<float*>(static_cast<void*>(static_cast<char*>(send_buffer) + sizeof(unsigned long) + sizeof(char)));
 
-      size_t cloud_size = scene.write_point_cloud(cloud_buffer, width, height);
+	size_t cloud_size = scene.write_point_cloud(cloud_buffer, width, height);
       
-      size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) +
-	cloud_size * sizeof(float);
-      memcpy(send_buffer, &TYPE, sizeof(char));
-      memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
-      zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
-      publisher.send(message);
+	size_t send_buffer_size = sizeof(unsigned long) + sizeof(char) +
+	  cloud_size * sizeof(float);
+	memcpy(send_buffer, &TYPE, sizeof(char));
+	memcpy(timestamp_buffer, &timestamp, sizeof(unsigned long));
+	zmq::message_t message(send_buffer, send_buffer_size, c_message_free, NULL);
+	publisher.send(message);
+	last_timestamp_sent = timestamp;
 
-      std::ostringstream length_stream;
-      length_stream << send_buffer_size;
-      std::string length = length_stream.str();
+	std::ostringstream length_stream;
+	length_stream << send_buffer_size;
+	std::string length = length_stream.str();
 
-      // Delete the old length
-      for (unsigned short b = 0; b < backspaces; ++b)
-	std::cerr << '\b';
-      std::cerr << length;
+	// Delete the old length
+	for (unsigned short b = 0; b < backspaces; ++b)
+	  std::cerr << '\b';
+	std::cerr << length;
 
-      loopcount = 0;
-      backspaces = length.size();      
+	loopcount = 0;
+	backspaces = length.size();
+      }
     }
 
     /*

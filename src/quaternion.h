@@ -37,7 +37,7 @@
 
 std::string to_string(const glm::dquat& q) {
   std::ostringstream out;
-  out << q[0] << ", " << q[1] << ", " << q[2] << ", " << q[3] << std::flush;
+  out << q[3] << ", " << q[0] << ", " << q[1] << ", " << q[2] << std::flush;
   return out.str();
 }
 

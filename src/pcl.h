@@ -34,8 +34,8 @@
 #include "quaternion.h"
 
 namespace pcl { namespace console {
-  // Read as if it is an angle axis: theta,x,y,z 
-  bool parse_4x_arguments(int argc, char** argv, const char* str, glm::dquat& v) {
+  // Read as if it is an angle axis: theta,x,y,z
+  bool parse_angle_axis(int argc, char** argv, const char* str, glm::dquat& v) {
     std::vector<double> tmp;
     double angle;
     glm::dvec3 xyz(1.0, 0.0, 0.0);
@@ -56,6 +56,30 @@ namespace pcl { namespace console {
     }
 
     v = glm::angleAxis<double>(angle, xyz);
+
+    return true;
+  }
+
+
+  // Read as if it is a quaternion in the w,x,y,z order
+  bool parse_quaternion(int argc, char** argv, const char* str, glm::dquat& v) {
+    std::vector<double> tmp;
+    double angle;
+    glm::dvec3 xyz(1.0, 0.0, 0.0);
+    pcl::console::parse_x_arguments(argc, argv, str, tmp);
+
+    if (tmp.size() == 0) return false;
+    if (tmp.size() < 4) {
+      std::cerr << "invalid quaternion (wrong number of arguments)" << std::endl;
+      return false;
+    }
+
+    // w,x,y,z
+    v[3] = tmp[0];
+    v[0] = tmp[1];
+    v[1] = tmp[2];
+    v[2] = tmp[3];
+
     return true;
   }
 

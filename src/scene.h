@@ -242,7 +242,8 @@ public:
   void save_pose_metadata(const std::string& basename, const glm::dmat4& pose) {
     std::string filename = basename + ".transform";
     std::ofstream out(filename.c_str());
-    out << pose[0][0] << ' ' << pose[1][0] << ' ' << pose[2][0] << ' ' << pose[3][0] << '\n'
+    out << std::scientific << std::setprecision(std::numeric_limits<double>::digits10 + 1)
+        << pose[0][0] << ' ' << pose[1][0] << ' ' << pose[2][0] << ' ' << pose[3][0] << '\n'
         << pose[0][1] << ' ' << pose[1][1] << ' ' << pose[2][1] << ' ' << pose[3][1] << '\n'
         << pose[0][2] << ' ' << pose[1][2] << ' ' << pose[2][2] << ' ' << pose[3][2] << '\n'
         << pose[0][3] << ' ' << pose[1][3] << ' ' << pose[2][3] << ' ' << pose[3][3] << std::endl;
@@ -320,20 +321,12 @@ public:
     else
       rotation_axis = rotation_axis / rotation_axis_length;
     
-    std::cerr << "  axis :\t" << glm::to_string(rotation_axis) << std::endl;
-    
-    std::cerr << "  angle:\t" << rotation_angle << std::endl;
     glm::dquat rotation = glm::angleAxis<double>(-rotation_angle, rotation_axis);
-    std::cerr << " rotate:\t" << to_string(rotation) << std::endl;
-
 
     glm::dquat y_flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
     glm::dquat z_flip = glm::angleAxis<double>(M_PI/2.0, glm::dvec3(0.0,0.0,1.0));
     glm::dvec3 adjusted_translate = glm::mat3_cast(rotation) * translate;
     glm::dquat adjusted_camera_q = camera_q * z_flip * y_flip * rotation;
-
-    std::cerr << "  transl:\t" << glm::to_string(adjusted_translate) << std::endl;
-    std::cerr << "  sensor:\t" << to_string(adjusted_camera_q) << std::endl;
     
     return glm::mat4_cast(adjusted_camera_q) * glm::translate(glm::dmat4(1.0), adjusted_translate);
   }
@@ -347,7 +340,7 @@ public:
    */  
   glm::dmat4 get_model_matrix(const glm::dquat& model) {
     glm::dquat flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
-    return glm::mat4_cast(model * flip) * glm::scale(glm::dmat4(1.0), glm::dvec3(scale_factor, scale_factor, scale_factor));
+    return glm::mat4_cast(flip * model) * glm::scale(glm::dmat4(1.0), glm::dvec3(scale_factor, scale_factor, scale_factor));
   }
 
 
@@ -375,7 +368,7 @@ public:
     
     unsigned char rgba[4*width*height];
 
-    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, -1.0)); // FIXME: should this last one be +1.0?
+    glm::mat4 axis_flip = glm::scale(glm::mat4(1.0), glm::vec3(-1.0, 1.0, -1.0));
 
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)(rgba));
 

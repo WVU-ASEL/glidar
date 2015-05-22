@@ -67,7 +67,10 @@ void send_shutdown(zmq::socket_t& publisher) {
 }
 
 
-void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port, size_t expected_subscribers) {
+void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port, size_t expected_subscribers, int conflate) {
+  if (conflate)
+    publisher.setsockopt(ZMQ_CONFLATE, &conflate, sizeof(int)); // keep only last message received
+  
   std::ostringstream publish_address, sync_address;
 
   publish_address << "tcp://*:" << port << std::flush;

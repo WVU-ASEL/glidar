@@ -56,7 +56,7 @@ void send_shutdown(zmq::socket_t& publisher);
  * \param number of subscribers to wait for (more are allowed, but
  * this many will be required before publishing begins)
  */
-void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port, size_t expected_subscribers = 1);
+void sync_publish(zmq::socket_t& publisher, zmq::socket_t& sync_service, int port, size_t expected_subscribers = 1, int conflate = 0);
 
 
 /** \brief sends a pose to subscribers
