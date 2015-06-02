@@ -292,11 +292,6 @@ int main(int argc, char** argv) {
     if (physics_port) {
       receive_result = receive_pose_components(subscriber, timestamp, object, translation, sensor);
       if (receive_result == RECV_SHUTDOWN) s_interrupted = true;
-      
-/*      std::cerr << "Physics instructing a render with the following:\n";
-      std::cerr << "  object:\t" << to_string(object) << std::endl;
-      std::cerr << "  transl:\t" << glm::to_string(translation) << std::endl;
-      std::cerr << "  sensor:\t" << to_string(sensor) << std::endl; */
     }
 
     /*

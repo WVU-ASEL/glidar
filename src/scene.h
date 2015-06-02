@@ -324,9 +324,10 @@ public:
     glm::dquat rotation = glm::angleAxis<double>(-rotation_angle, rotation_axis);
 
     glm::dquat y_flip = glm::angleAxis<double>(M_PI, glm::dvec3(0.0,1.0,0.0));
-    glm::dquat z_flip = glm::angleAxis<double>(M_PI/2.0, glm::dvec3(0.0,0.0,1.0));
     glm::dvec3 adjusted_translate = glm::mat3_cast(rotation) * translate;
-    glm::dquat adjusted_camera_q = camera_q * z_flip * y_flip * rotation;
+    glm::dquat adjusted_camera_q = camera_q * y_flip * rotation;
+
+    std::cerr << "camera_q received: " << to_string(camera_q) << std::endl;
     
     return glm::mat4_cast(adjusted_camera_q) * glm::translate(glm::dmat4(1.0), adjusted_translate);
   }
