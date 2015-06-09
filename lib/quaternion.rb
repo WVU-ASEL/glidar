@@ -115,4 +115,8 @@ class Quaternion
      Math.asin(2.0 * (@w*@y - @z*@x)) * 180.0 / Math::PI,
      Math.atan2(2.0 * (@w*@z + @x*@y), 1.0 - 20*(@y*@y + @z*@z)) * 180.0 / Math::PI]
   end
+
+  def to_angle # in degrees
+    Math.acos(@w)*2.0 * 180.0 / Math::PI
+  end
 end
