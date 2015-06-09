@@ -79,10 +79,13 @@ public:
    * @param[in] amount by which to scale the model we load.
    * @param[in] initial camera distance.
    */
-  Scene(const std::string& filename, float scale_factor_, float camera_d_)
+  Scene(const std::string& filename, float scale_factor_, float camera_d_, int noise_model_, float noise_coefficient_, int noise_seed_)
   : scale_factor(scale_factor_),
     projection(1.0),
     camera_d(camera_d_),
+    noise_model(noise_model_),
+    noise_seed(noise_seed_),
+    noise_coefficient(noise_coefficient_),
     near_plane_bound(camera_d_ - BOX_HALF_DIAGONAL),
     real_near_plane(std::max(MIN_NEAR_PLANE, camera_d_-BOX_HALF_DIAGONAL)),
     far_plane(camera_d_+BOX_HALF_DIAGONAL)
@@ -186,11 +189,17 @@ public:
 
     glm::mat4 model = glm::inverse(inverse_model);
 
+    GLint noise_model_id = glGetUniformLocation(shader_program->id(), "noise_model");
+    GLint noise_seed_id = glGetUniformLocation(shader_program->id(), "noise_seed");
+    GLfloat noise_coefficient_id = glGetUniformLocation(shader_program->id(), "noise_coefficient");
     GLint far_plane_id = glGetUniformLocation(shader_program->id(), "far_plane");
     GLint near_plane_id = glGetUniformLocation(shader_program->id(), "near_plane");
 
-    glUniform1fv(far_plane_id, 1, &far_plane);
-    glUniform1fv(near_plane_id, 1, &real_near_plane);
+    glUniform1i(noise_model_id, noise_model);
+    glUniform1i(noise_seed_id, noise_seed);
+    glUniform1f(noise_coefficient_id, noise_coefficient);
+    glUniform1f(far_plane_id, far_plane);
+    glUniform1f(near_plane_id, real_near_plane);
 
     GLint v_id = glGetUniformLocation(shader_program->id(), "ViewMatrix");
     glUniformMatrix4fv(v_id, 1, GL_FALSE, &view_physics[0][0]);
@@ -213,6 +222,13 @@ public:
     check_gl_error();
 
     glFlush();
+
+    // FIXME: This is a really terrible way of doing seeding. Basically our "random" numbers
+    // will repeat every 20000. It's a klugey work-around for graphics cards that don't
+    // implement the GLSL noise1() function. If you want it to be "more" random, you might try
+    // setting noise_seed using a random number generator. This was enough for my needs. --JW 6/9/15
+    noise_seed++;
+    if (noise_seed > 20000) noise_seed = 1;
   }
   
 
@@ -448,6 +464,9 @@ private:
 
   glm::mat4 projection;
   float camera_d;
+  GLint noise_model;
+  GLint noise_seed;
+  GLfloat noise_coefficient;
   GLfloat near_plane_bound;
   GLfloat real_near_plane;
   GLfloat far_plane;

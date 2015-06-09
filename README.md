@@ -13,9 +13,7 @@ C++. It uses GLSL shaders to produce range images of 3D models, which
 can be used to test pose determination algorithms.
 
 The simulated range images are a first-order approximation of what a
-real LIDAR sensor would observe. Noise can be added in the fragment
-shader, and basic textures are supported (bump maps are not yet
-available).
+real LIDAR sensor would observe. Basic textures are supported.
 
 Note that GLIDAR does not model a specific sensor system. However, it
 can be easily modified to model a sensor.
@@ -125,7 +123,9 @@ arguments are also accepted:
 * `--model-dr`: rotation rate as an axis divided by an angle in model frame (default: 0)
 * `--camera-dr`: same, but for the camera
 * `--model-r`: initial model attitude as an angle-axis in the inertial frame (angle, xyz vector; default: 0)
+* `--model-q`: provide attitude as a quaternion (w,x,y,z) instead of angle-axis
 * `--camera-r`: same, but for the camera
+* `--camera-q`: provide camera attitude as a quaternion (w,x,y,z) instead of angle-axis
 * `--camera-z`: sensor's initial distance from the object, typically in meters (default: 1000)
 * `--width`, `--height`: sensor resolution (default: 256)
 * `--fov`: sensor field-of-view (default: 20 degrees)
@@ -133,6 +133,9 @@ arguments are also accepted:
 * `--port`: the port to publish to, if ZeroMQ is included (if not given, will not be run in server mode)
 * `--subscribers`: the number of subscribers to wait for before beginning to publish
 * `--pub-rate`: if publishing, how many render cycles should pass between point cloud publications (default: 15)
+* `--noise-model`: what kind of noise to use, if any (0=off, 1=additive, 2=multiplicative; default: 0)
+* `--noise`: noise coefficient to apply (default: 0, no noise)
+* `--seed`: noise seed (repeats every 20,000 as currently written; default: 1)
 
 Note that if an option is provided for `--pcd`, the rotation rates
 should be set to 0. This option will produce two outputs, namely
@@ -147,6 +150,29 @@ existing files with the same name).
 If you wish to publish to a port (if you provide a port option), it is
 inadvisable to also supply a `--pcd` option. Additionally, if you are
 publishing and you use the `s` key, unpredictable behavior may result.
+
+### Noise ###
+
+The current noise model is very basic, and not particularly random.
+The main obstacle is that most graphics architectures don't implement
+the GLSL noise functions (noise1, noise2, noise3, noise4), so we have
+to use a [really terrible function from StackOverflow](http://stackoverflow.com/questions/12964279/whats-the-origin-of-this-glsl-rand-one-liner) --- which does not appear to be normally distributed.
+
+Three command line arguments allow the user to control the noise;
+these are `--noise-model`, `--noise`, and `--seed`. Seed is not really
+a random seed, per se, but rather a loop counter which ensures that
+the noise varies from frame to frame. It currently repeats every
+20,000, but that is easily modifiable in `scene.h`. The `noise`
+parameter sets a coefficient which ideally controls the variance of
+the random variates. Setting it to 0.1 should give about 0.1 meters of
+noise if we use `--noise-model 1` (additive noise), but no guarantees
+are made about its distribution.
+
+In the future I would like to allow texture-based noise, so that
+different types of materials have different noise
+properties. Unfortunately, I probably won't have time in the near
+future, so if this feature interests you, I encourage you to submit a
+pull request.
 
 ### GUI ###
 
@@ -210,7 +236,7 @@ feel free to ask.
 
 ## License ##
 
-Copyright 2014 - 2015, John O. Woods, Ph.D.; West Virginia University Applied
+Copyright 2014--2015, John O. Woods, Ph.D.; West Virginia University Applied
 Space Exploration Laboratory; and West Virginia Robotic Technology
 Center. All rights reserved.
 

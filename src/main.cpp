@@ -130,6 +130,8 @@ int main(int argc, char** argv) {
   unsigned int width = 256, height = 256;
   float fov = 20.0;
   timestamp_t timestamp = 0;
+  int noise_model_id = 0, noise_seed = 1;
+  float noise_coefficient = 0.0f;
   std::string pcd_filename;
 
   glm::dquat object(1.0, 0.0, 0.0, 0.0), sensor(1.0, 0.0, 0.0, 0.0);
@@ -156,6 +158,10 @@ int main(int argc, char** argv) {
   pcl::console::parse(argc, argv, "-w", width);
   pcl::console::parse(argc, argv, "--height", height);
   pcl::console::parse(argc, argv, "-h", height);
+
+  pcl::console::parse(argc, argv, "--noise-model", noise_model_id);
+  pcl::console::parse(argc, argv, "--noise", noise_coefficient);
+  pcl::console::parse(argc, argv, "--seed", noise_seed);
 
   /*
    * 2. If ZeroQ is included, let's allow GLIDAR to be connected to a loop and send and receive data. Read those command line arguments.
@@ -231,7 +237,7 @@ int main(int argc, char** argv) {
   // Ensure we can capture keypresses.
   glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-  Scene scene(model_filename, model_scale_factor, -translation[2]);
+  Scene scene(model_filename, model_scale_factor, -translation[2], noise_model_id, noise_coefficient, noise_seed);
 
 
   double last_time = 0,

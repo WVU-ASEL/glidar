@@ -1,7 +1,7 @@
 #version 120
 
 /*
- * Copyright (c) 2014, John O. Woods, Ph.D.
+ * Copyright (c) 2014 - 2015, John O. Woods, Ph.D.
  *   West Virginia University Applied Space Exploration Lab
  *   West Virginia Robotic Technology Center
  * All rights reserved.
@@ -40,28 +40,43 @@ varying vec4 specular;
 varying vec3 half_vector;
 varying vec3 ec_pos;
 
+uniform int noise_model;
+uniform int noise_seed;
+uniform float noise_coefficient;
 uniform float far_plane;
 uniform float near_plane;
 uniform mat4 ViewMatrix;
 uniform mat4 LightModelViewMatrix;
-
 
 uniform sampler2D diffuse_texture_color;
 uniform sampler2D specular_texture_color;
 
 // Random number generator without any real testing done.
 // Comes from: http://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
-//float rand(vec2 co) {
-//  return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
-//}
-
-// Some other random number generators we can use for noise models:
-float rand_positive(vec2 co) {
-  return noise1(co) * 0.5 + 0.5;
+float rand(vec2 co) {
+  return fract(sin(dot(co.xy,vec2(12.9898,78.233))) * 43758.5453);
 }
 
-float rand_0_mean(vec2 co) {
-  return noise1(co*2);
+// Gaussian distribution about 0, but no negative values.
+// These won't work if your card doesn't implement noise1.
+float abs_rand_0_mean(vec2 co) {
+  return abs(noise1(co));
+}
+
+// Random variates  with a mean of 1, Gaussian distributed. 'coeff' sets the variance.
+// These won't work if your card doesn't implement noise1.
+float rand_1_mean(float coeff, vec2 co) {
+  return coeff*noise1(co)+1.0;
+}
+
+// Unknown distribution about 0, but no negative values.
+float abs_rand_0_mean_software(vec2 co) {
+  return abs(rand(co) - 0.5);
+}
+
+// Random variates  with a mean of 1, unknown distribution. 'coeff' sets the variance.
+float rand_1_mean_software(float coeff, vec2 co) {
+  return coeff*(rand(co) - 0.5) + 1.0;
 }
 
 void main() {
@@ -85,14 +100,22 @@ void main() {
     // Calculate the angle w.r.t. the spotlight.
     float spot_effect = dot(normalize(spot_dir), normalize(light_dir));
 
+    // Uncomment the following line to create a circular FOV.
     //if (spot_effect > gl_LightSource[0].spotCosCutoff) {
       float att = 1.0 / (gl_LightSource[0].constantAttenuation + gl_LightSource[0].linearAttenuation*dist + gl_LightSource[0].quadraticAttenuation*dist*dist);
 
       color += att * (diffuse_color * n_dot_hv + ambient);
       color += att * spec_color * pow(n_dot_hv, gl_FrontMaterial.shininess);
 
-      // To use noise model, uncomment:
-      //dist -= 0.02 * rand_positive(gl_FragCoord.xy);
+      if (noise_coefficient != 0) {
+	if (noise_model == 1) {
+	  // Basic additive noise
+	  dist -= noise_coefficient*2.0 * abs_rand_0_mean_software(gl_FragCoord.xy*noise_seed);
+	} else if (noise_model == 2) {
+	  // Multiplicative noise
+	  dist *= rand_1_mean_software(noise_coefficient, gl_FragCoord.xy*noise_seed);
+	}
+      }
 
       float corrected_dist = spot_effect * dist;
       float dist_ratio = 65536.0f * (corrected_dist - near_plane) / (far_plane - near_plane);
