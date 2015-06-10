@@ -65,7 +65,7 @@ class Quaternion
   end
 
   def normalize
-    magnitude = Math.sqrt(x*x + y*y + z*z)
+    magnitude = Math.sqrt(w*w + x*x + y*y + z*z)
     Quaternion.new(@w / magnitude, @x / magnitude, @y / magnitude, @z / magnitude)
   end
 
